@@ -86,6 +86,8 @@ async function waitUntilStarted(sandboxId) {
 
 const runnerScript = loadRunnerScript();
 const smokeCommand = [
+  `git pull --ff-only origin ${BRANCH}`,
+  "printf 'SMOKE_PULL=ok\\n'",
   "printf 'SMOKE_PWD=%s\\n' \"$PWD\"",
   "printf 'SMOKE_BRANCH=%s\\n' \"$(git branch --show-current)\"",
   "printf 'SMOKE_HEAD=%s\\n' \"$(git rev-parse HEAD)\"",
@@ -158,6 +160,9 @@ try {
   if (!result.result.includes("path=.")) {
     throw new Error("Daytona smoke did not default the working path to repository root");
   }
+  if (!result.result.includes("SMOKE_PULL=ok")) {
+    throw new Error("Daytona smoke custom command could not run authenticated git pull");
+  }
   if (!result.result.includes(`SMOKE_BRANCH=${BRANCH}`)) {
     throw new Error(`Daytona smoke did not checkout ${BRANCH}`);
   }
@@ -165,7 +170,7 @@ try {
     throw new Error("Daytona smoke command did not report the checked-out commit");
   }
 
-  console.log(`PASS runner cloned ${githubOwner}/${REPOSITORY}@${BRANCH} and executed a root command`);
+  console.log(`PASS runner cloned ${githubOwner}/${REPOSITORY}@${BRANCH}, authenticated git pull, and executed a root command`);
 } catch (error) {
   failure = error;
   console.error(describeError(error));
