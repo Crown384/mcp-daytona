@@ -44,6 +44,12 @@ EOF
   GIT_ASKPASS="$ASKPASS" "$@"
 )
 
+ensure_git_identity() {
+  cd "$REPO_DIR" || return 1
+  git config user.name >/dev/null 2>&1 || git config user.name "$GITHUB_OWNER"
+  git config user.email >/dev/null 2>&1 || git config user.email "$GITHUB_OWNER@users.noreply.github.com"
+}
+
 run_step() {
   LABEL="$1"
   shift
@@ -219,6 +225,7 @@ else
   exit 2
 fi
 
+ensure_git_identity || exit $?
 cd "$REPO_DIR" || exit 1
 printf 'Daytona cycle: %s/%s @ %s\n' "$GITHUB_OWNER" "$REPOSITORY" "$BRANCH"
 printf 'Checked out: %s\n' "$(git rev-parse HEAD)"
