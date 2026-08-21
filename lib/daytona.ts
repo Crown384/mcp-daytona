@@ -181,8 +181,14 @@ function newSandboxName(): string {
 }
 
 async function tryRecoverSandbox(name: string): Promise<unknown | undefined> {
+  const config = getConfig();
   try {
-    return await requestJson(`/sandbox/${encodeURIComponent(name)}`);
+    const response = await fetch(`${config.daytonaApiUrl}/sandbox/${encodeURIComponent(name)}`, {
+      headers: { Authorization: `Bearer ${config.daytonaApiKey}` },
+    });
+    if (!response.ok) return undefined;
+    const text = await response.text();
+    return text ? JSON.parse(text) : {};
   } catch {
     return undefined;
   }
@@ -208,24 +214,25 @@ async function createSandboxRequest(input: RunCycleInput, name: string): Promise
         headers: { Authorization: `Bearer ${config.daytonaApiKey}`, "Content-Type": "application/json" },
         body,
       });
-
-      if (response.ok) {
-        const text = await response.text();
-        return text ? JSON.parse(text) : {};
-      }
-
-      const text = await response.text();
-      lastError = new Error(`Daytona sandbox creation failed (${response.status}): ${text.slice(0, 1_000)}`);
-      const recovered = await tryRecoverSandbox(name);
-      if (recovered) return recovered;
-      if (!isRetryableStatus(response.status)) throw lastError;
     } catch (error) {
       lastError = error;
       const recovered = await tryRecoverSandbox(name);
       if (recovered) return recovered;
       if (attempt === API_RETRY_ATTEMPTS) break;
+      await sleep(retryDelayMs(undefined, attempt));
+      continue;
     }
 
+    if (response.ok) {
+      const text = await response.text();
+      return text ? JSON.parse(text) : {};
+    }
+
+    const text = await response.text();
+    lastError = new Error(`Daytona sandbox creation failed (${response.status}): ${text.slice(0, 1_000)}`);
+    const recovered = await tryRecoverSandbox(name);
+    if (recovered) return recovered;
+    if (!isRetryableStatus(response.status)) throw lastError;
     if (attempt < API_RETRY_ATTEMPTS) await sleep(retryDelayMs(response, attempt));
   }
 
