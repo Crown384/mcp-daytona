@@ -1,30 +1,32 @@
 export const RUNNER_SCRIPT = String.raw`set -uo pipefail
 
 STATUS=0
+ACTION="${ACTION:-fresh}"
+SYNC_MODE="${SYNC_MODE:-reset}"
 REPO_DIR="$HOME/workspace/repo"
-ASKPASS="$HOME/.mcp-daytona-git-askpass"
-TOKEN_FILE="$(mktemp)"
-REMOTE="https://github.com/$GITHUB_OWNER/$REPOSITORY.git"
-
-cleanup() {
-  rm -f "$ASKPASS" "$TOKEN_FILE"
-}
-trap cleanup EXIT
-
-printf '%s' "$GITHUB_TOKEN" > "$TOKEN_FILE"
-chmod 600 "$TOKEN_FILE"
+CONTEXT_FILE="$HOME/.mcp-daytona-context"
+TOKEN_SECRET="$GITHUB_TOKEN"
 unset GITHUB_TOKEN
+export GIT_TERMINAL_PROMPT=0
 
-cat > "$ASKPASS" <<EOF
+with_git_auth() {
+  TOKEN_FILE="$(mktemp)"
+  ASKPASS="$(mktemp)"
+  printf '%s' "$TOKEN_SECRET" > "$TOKEN_FILE"
+  chmod 600 "$TOKEN_FILE"
+  cat > "$ASKPASS" <<EOF
 #!/bin/sh
 case "\$1" in
   *Username*) printf '%s\\n' 'x-access-token' ;;
   *) cat "$TOKEN_FILE"; printf '\\n' ;;
 esac
 EOF
-chmod 700 "$ASKPASS"
-export GIT_ASKPASS="$ASKPASS"
-export GIT_TERMINAL_PROMPT=0
+  chmod 700 "$ASKPASS"
+  GIT_ASKPASS="$ASKPASS" "$@"
+  CODE=$?
+  rm -f "$ASKPASS" "$TOKEN_FILE"
+  return "$CODE"
+}
 
 run_step() {
   LABEL="$1"
@@ -61,34 +63,45 @@ run_script() {
   esac
 }
 
-printf 'Daytona cycle: %s/%s @ %s\n' "$GITHUB_OWNER" "$REPOSITORY" "$BRANCH"
-rm -rf "$REPO_DIR"
-mkdir -p "$(dirname "$REPO_DIR")"
+fresh_checkout() {
+  REMOTE="https://github.com/$GITHUB_OWNER/$REPOSITORY.git"
+  rm -rf "$REPO_DIR"
+  mkdir -p "$(dirname "$REPO_DIR")"
+  with_git_auth git clone --branch "$BRANCH" --single-branch "$REMOTE" "$REPO_DIR" || return $?
+  printf '%s\n%s\n%s\n' "$GITHUB_OWNER" "$REPOSITORY" "$BRANCH" > "$CONTEXT_FILE"
+  chmod 600 "$CONTEXT_FILE"
+}
 
-git clone --branch "$BRANCH" --single-branch "$REMOTE" "$REPO_DIR"
-CLONE_CODE=$?
-unset GIT_ASKPASS
-if [ "$CLONE_CODE" -ne 0 ]; then
-  exit "$CLONE_CODE"
-fi
+load_context() {
+  if [ ! -f "$CONTEXT_FILE" ] || [ ! -d "$REPO_DIR/.git" ]; then
+    printf 'Persistent sandbox has no Daytona MCP checkout context.\n'
+    return 1
+  fi
+  SAVED_OWNER="$(sed -n '1p' "$CONTEXT_FILE")"
+  REPOSITORY="$(sed -n '2p' "$CONTEXT_FILE")"
+  BRANCH="$(sed -n '3p' "$CONTEXT_FILE")"
+  if [ "$SAVED_OWNER" != "$GITHUB_OWNER" ] || [ -z "$REPOSITORY" ] || [ -z "$BRANCH" ]; then
+    printf 'Persistent sandbox checkout context is invalid.\n'
+    return 1
+  fi
+}
 
-cd "$REPO_DIR" || exit 1
-printf 'Checked out: %s\n' "$(git rev-parse HEAD)"
+sync_checkout() {
+  [ "$SYNC_MODE" = "none" ] && return 0
+  cd "$REPO_DIR" || return 1
+  printf '\n== sync latest GitHub branch ==\n'
+  with_git_auth git fetch origin "$BRANCH" || return $?
+  git reset --hard "origin/$BRANCH" || return $?
+}
 
-if [ ! -f package.json ]; then
-  printf '\nNo package.json found; skipping Node checks.\n'
-else
+install_dependencies() {
   if [ -f pnpm-lock.yaml ]; then
     PACKAGE_MANAGER=pnpm
-    if ! command -v pnpm >/dev/null 2>&1; then
-      prepare_corepack
-    fi
+    command -v pnpm >/dev/null 2>&1 || prepare_corepack
     run_step install pnpm install --frozen-lockfile
   elif [ -f yarn.lock ]; then
     PACKAGE_MANAGER=yarn
-    if ! command -v yarn >/dev/null 2>&1; then
-      prepare_corepack
-    fi
+    command -v yarn >/dev/null 2>&1 || prepare_corepack
     if [ -f .yarnrc.yml ]; then
       run_step install yarn install --immutable
     else
@@ -104,25 +117,48 @@ else
     PACKAGE_MANAGER=npm
     run_step install npm install
   fi
+}
 
+run_repository_checks() {
+  for SCRIPT_NAME in typecheck lint test; do
+    if has_script "$SCRIPT_NAME"; then
+      run_script "$SCRIPT_NAME"
+    fi
+  done
+
+  if has_script fallow; then
+    run_script fallow
+  elif [ -x node_modules/.bin/fallow ]; then
+    run_step fallow ./node_modules/.bin/fallow
+  else
+    printf '\n== fallow ==\nskipped (not configured in this repository)\n'
+  fi
+
+  if has_script build; then
+    run_script build
+  fi
+}
+
+if [ "$ACTION" = "fresh" ]; then
+  fresh_checkout || exit $?
+elif [ "$ACTION" = "rerun" ]; then
+  load_context || exit $?
+  sync_checkout || exit $?
+else
+  printf 'Unsupported runner action: %s\n' "$ACTION"
+  exit 2
+fi
+
+cd "$REPO_DIR" || exit 1
+printf 'Daytona cycle: %s/%s @ %s\n' "$GITHUB_OWNER" "$REPOSITORY" "$BRANCH"
+printf 'Checked out: %s\n' "$(git rev-parse HEAD)"
+
+if [ ! -f package.json ]; then
+  printf '\nNo package.json found; skipping Node checks.\n'
+else
+  install_dependencies
   if [ "$STATUS" -eq 0 ]; then
-    for SCRIPT_NAME in typecheck lint test; do
-      if has_script "$SCRIPT_NAME"; then
-        run_script "$SCRIPT_NAME"
-      fi
-    done
-
-    if has_script fallow; then
-      run_script fallow
-    elif [ -x node_modules/.bin/fallow ]; then
-      run_step fallow ./node_modules/.bin/fallow
-    else
-      printf '\n== fallow ==\nskipped (not configured in this repository)\n'
-    fi
-
-    if has_script build; then
-      run_script build
-    fi
+    run_repository_checks
   else
     printf '\nInstall failed; repository checks were skipped.\n'
   fi
@@ -131,11 +167,9 @@ fi
 printf '\n== git status ==\n'
 git status --short
 
-printf '\n== push ==\n'
-export GIT_ASKPASS="$ASKPASS"
-git push origin "HEAD:$BRANCH"
+printf '\n== push checked HEAD ==\n'
+with_git_auth git push origin "HEAD:$BRANCH"
 PUSH_CODE=$?
-unset GIT_ASKPASS
 if [ "$PUSH_CODE" -ne 0 ] && [ "$STATUS" -eq 0 ]; then
   STATUS="$PUSH_CODE"
 fi
