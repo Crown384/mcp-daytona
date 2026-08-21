@@ -82,10 +82,11 @@ test("MCP rejects absolute and parent-traversal paths", () => {
   assert.match(mcpSource, /path cannot traverse outside the repository/);
 });
 
-test("runner keeps GitHub token out of repository child processes", () => {
+test("runner keeps GitHub token secret while Git commands authenticate", () => {
   assert.match(runner, /TOKEN_SECRET=.*GITHUB_TOKEN/);
   assert.match(runner, /unset GITHUB_TOKEN/);
   assert.match(runner, /GIT_TERMINAL_PROMPT=0/);
+  assert.match(runner, /with_git_auth bash -lc "\$COMMAND"/);
 });
 
 test("runner Git credentials are temporary, cleaned, and use configured owner", () => {
@@ -102,9 +103,11 @@ test("runner implementation never pushes source on its own", () => {
   assert.equal(/git\s+add/.test(runner), false);
 });
 
-test("runner rejects dirty working trees caused by execution commands", () => {
+test("custom terminal commands may leave working-tree changes without forced failure", () => {
   assert.match(runner, /git status --porcelain/);
-  assert.match(runner, /Repository working tree changed during the execution cycle/);
+  assert.match(runner, /if \[ -z "\$COMMAND" \]; then/);
+  assert.match(runner, /Repository working tree contains changes from the custom command/);
+  assert.match(runner, /Repository working tree changed during the automatic QA cycle/);
 });
 
 test("live smoke test uses exact runner, authenticated git pull, command, and cleanup", () => {
