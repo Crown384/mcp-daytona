@@ -1,4 +1,4 @@
-import { assertAllowedRepository, getConfig } from "./config";
+import { getConfig } from "./config";
 import { RUNNER_SCRIPT } from "./runner";
 
 const DAYTONA_TOOLBOX_URL = "https://proxy.app.daytona.io/toolbox";
@@ -220,8 +220,6 @@ function filterManagedList(value: unknown): unknown {
 }
 
 export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
-  const config = getConfig();
-  assertAllowedRepository(config, input.repository);
   const sandboxId = await createSandbox(input);
   let execution: { exitCode: number; log: string };
 
@@ -248,7 +246,6 @@ export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
 export async function rerunCycle(input: RerunCycleInput): Promise<CycleResult> {
   const sandbox = await getManagedSandboxRaw(input.sandboxId);
   const context = managedContext(sandbox);
-  assertAllowedRepository(getConfig(), context.repository);
   await ensureStarted(input.sandboxId, sandbox);
   const execution = await executeRunner(input.sandboxId, "rerun", input.timeoutSeconds, undefined, undefined, input.syncMode);
   const lifecycle = await applyAfterRun(input.sandboxId, input.afterRun);
