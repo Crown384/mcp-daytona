@@ -3,6 +3,7 @@ const TOOLBOX_URL = "https://proxy.app.daytona.io/toolbox";
 const REPOSITORY = "pamaos-next";
 const BRANCH = "main";
 const SNAPSHOT = "daytona-small";
+const OWNER_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
 function requireEnv(name) {
   const value = process.env[name]?.trim();
@@ -13,6 +14,7 @@ function requireEnv(name) {
 const daytonaApiKey = requireEnv("DAYTONA_API_KEY");
 const githubToken = requireEnv("GITHUB_TOKEN");
 const githubOwner = requireEnv("GITHUB_OWNER");
+if (!OWNER_PATTERN.test(githubOwner)) throw new Error("GITHUB_OWNER contains invalid characters");
 
 async function daytona(path, init = {}) {
   const headers = new Headers(init.headers);
@@ -47,7 +49,7 @@ const smokeScript = [
   'cat > "$ASKPASS" <<EOF',
   "#!/bin/sh",
   'case "\\$1" in',
-  "  *Username*) printf '%s\n' \"$GITHUB_OWNER\" ;;",
+  `  *Username*) printf '%s\\n' '${githubOwner}' ;;`,
   '  *) cat "$TOKEN_FILE"; printf "\\n" ;;',
   "esac",
   "EOF",
