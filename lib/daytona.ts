@@ -117,12 +117,10 @@ async function labelSandbox(sandboxId: string, repository: string, branch: strin
 }
 
 async function createSandbox(input: RunCycleInput): Promise<string> {
-  const config = getConfig();
   const value = await requestJson("/sandbox", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      target: config.daytonaTarget,
       snapshot: input.snapshot,
       ephemeral: input.afterRun === "delete",
       autoStopInterval: input.autoStopMinutes,
