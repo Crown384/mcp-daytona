@@ -9,11 +9,12 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "check": "pnpm run typecheck && pnpm run lint",
-    "cf:build": "pnpm dlx @opennextjs/cloudflare@latest build",
+    "cf:build": "opennextjs-cloudflare build",
     "validate": "node scripts/validate-and-push.mjs",
-    "deploy": "pnpm dlx wrangler@latest deploy"
+    "deploy": "wrangler deploy"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "1.20.2",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -26,7 +27,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "4.124.0"
   },
   "packageManager": "pnpm@10.34.5"
 }
