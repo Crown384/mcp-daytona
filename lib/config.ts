@@ -6,7 +6,6 @@ export type AppConfig = Readonly<{
   daytonaTarget: string;
   githubToken: string;
   githubOwner: string;
-  allowedRepositories: ReadonlySet<string>;
 }>;
 
 function requireEnv(name: string): string {
@@ -17,19 +16,6 @@ function requireEnv(name: string): string {
   }
 
   return value;
-}
-
-function parseRepositories(value: string): ReadonlySet<string> {
-  const repositories = value
-    .split(",")
-    .map((repository) => repository.trim())
-    .filter(Boolean);
-
-  if (repositories.length === 0) {
-    throw new Error("ALLOWED_GITHUB_REPOS must contain at least one repository");
-  }
-
-  return new Set(repositories);
 }
 
 export function getConfig(): AppConfig {
@@ -45,12 +31,5 @@ export function getConfig(): AppConfig {
     daytonaTarget: process.env.DAYTONA_TARGET?.trim() || "us",
     githubToken: requireEnv("GITHUB_TOKEN"),
     githubOwner,
-    allowedRepositories: parseRepositories(requireEnv("ALLOWED_GITHUB_REPOS")),
   };
-}
-
-export function assertAllowedRepository(config: AppConfig, repository: string): void {
-  if (!config.allowedRepositories.has(repository)) {
-    throw new Error(`Repository is not allowed: ${repository}`);
-  }
 }
