@@ -1,8 +1,8 @@
 MCP Daytona validation
-Started: 2026-08-21T03:22:15.098Z
+Started: 2026-08-21T03:25:49.795Z
 ========================================================================================
 PRE-FLIGHT
-PASS  Git head — 3fcd721e33585c0c721eebd0ec4030dabbe4f48f
+PASS  Git head — a680d76005693dec8ae2569fe196f06643392f33
 PASS  Git branch — main
 PASS  Git working tree — clean
 
@@ -13,9 +13,9 @@ pnpm install --frozen-lockfile
 Lockfile is up to date, resolution step is skipped
 Already up to date
 
-Done in 855ms using pnpm v10.34.5
+Done in 1s using pnpm v10.34.5
 RESULT: PASS (exit 0)
-DURATION: 1.0s
+DURATION: 1.2s
 
 ========================================================================================
 TYPECHECK
@@ -24,8 +24,11 @@ pnpm run typecheck
 
 > mcp-daytona@0.2.0 typecheck C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
 > tsc --noEmit
-RESULT: PASS (exit 0)
-DURATION: 2.2s
+
+open-next.config.ts(1,40): error TS2307: Cannot find module '@opennextjs/cloudflare' or its corresponding type declarations.
+ ELIFECYCLE  Command failed with exit code 2.
+RESULT: FAIL (exit 2)
+DURATION: 3.7s
 
 ========================================================================================
 LINT
@@ -35,7 +38,7 @@ pnpm run lint
 > mcp-daytona@0.2.0 lint C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
 > eslint .
 RESULT: PASS (exit 0)
-DURATION: 4.5s
+DURATION: 6.6s
 
 SKIP  Tests — no test script configured
 
@@ -58,29 +61,59 @@ pnpm run cf:build
 WARN OpenNext is not fully compatible with Windows.
 WARN For optimal performance, it is recommended to use Windows Subsystem for Linux (WSL).
 WARN While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.
-file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/@opennextjs+cloudflare@1.20_c0c6951cd649df2f66a9b09dc7111830/node_modules/@opennextjs/cloudflare/dist/cli/commands/utils/utils.js:49
-            throw new Error(`No \`${OPEN_NEXT_CONFIG_FILE_NAME}\` file was found in the project root.\n\nThis file is required for OpenNext Cloudflare builds.\nRun \`opennextjs-cloudflare migrate\` to create it, or see https://opennext.js.org/cloudflare/get-started for setup guidance.\nCommit it and re-run the build.`);
-                  ^
+X [ERROR] Could not resolve "@opennextjs/cloudflare"
 
-Error: No `open-next.config.ts` file was found in the project root.
+    open-next.config.ts:1:39:
+      1 │ import { defineCloudflareConfig } from "@opennextjs/cloudflare";
+        ╵                                        ~~~~~~~~~~~~~~~~~~~~~~~~
 
-This file is required for OpenNext Cloudflare builds.
-Run `opennextjs-cloudflare migrate` to create it, or see https://opennext.js.org/cloudflare/get-started for setup guidance.
-Commit it and re-run the build.
-    at compileConfig (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/@opennextjs+cloudflare@1.20_c0c6951cd649df2f66a9b09dc7111830/node_modules/@opennextjs/cloudflare/dist/cli/commands/utils/utils.js:49:19)
-    at buildCommand (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/@opennextjs+cloudflare@1.20_c0c6951cd649df2f66a9b09dc7111830/node_modules/@opennextjs/cloudflare/dist/cli/commands/build.js:14:40)
-    at Object.handler (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/@opennextjs+cloudflare@1.20_c0c6951cd649df2f66a9b09dc7111830/node_modules/@opennextjs/cloudflare/dist/cli/commands/build.js:73:19)
-    at file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/command.js:245:54
-    at maybeAsyncResult (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/utils/maybe-async-result.js:9:15)
-    at CommandInstance.handleValidationAndGetResult (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/command.js:244:25)
-    at CommandInstance.applyMiddlewareAndGetResult (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/command.js:284:20)
-    at CommandInstance.runCommand (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/command.js:167:20)
-    at [runYargsParserAndExecuteCommands] (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/yargs-factory.js:1389:105)
-    at YargsInstance.parse (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/yargs-factory.js:704:63)
+  You can mark the path "@opennextjs/cloudflare" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+Error: Build failed with 1 error:
+open-next.config.ts:1:39: ERROR: Could not resolve "@opennextjs/cloudflare"
+    at failureErrorWithLog (C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:1463:15)
+    at C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:924:25
+    at C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:876:52
+    at buildResponseToResult (C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:922:7)
+    at C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:949:16
+    at responseCallbacks.<computed> (C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:601:9)
+    at handleIncomingPacket (C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:656:12)
+    at Socket.readFromStdout (C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:579:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12) {
+  errors: [
+    {
+      detail: undefined,
+      id: '',
+      location: {
+        column: 39,
+        file: 'open-next.config.ts',
+        length: 24,
+        line: 1,
+        lineText: 'import { defineCloudflareConfig } from "@opennextjs/cloudflare";',
+        namespace: '',
+        suggestion: ''
+      },
+      notes: [
+        {
+          location: null,
+          text: 'You can mark the path "@opennextjs/cloudflare" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.'
+        }
+      ],
+      pluginName: '',
+      text: 'Could not resolve "@opennextjs/cloudflare"'
+    }
+  ],
+  warnings: []
+}
 
 Node.js v24.13.1
 RESULT: FAIL (exit 1)
-DURATION: 5.6s
+DURATION: 7.6s
 PASS  Post-validation Git diff check — only the validation log changed
 
 ========================================================================================
@@ -89,19 +122,19 @@ PASS  Git head
 PASS  Git branch
 PASS  Git working tree
 PASS  Install dependencies
-PASS  Typecheck
+FAIL  Typecheck
 PASS  Lint
 SKIP  Tests
 SKIP  Fallow audit
 FAIL  Cloudflare production build
 PASS  Post-validation Git diff check
 TOTAL: 10
-PASSED: 7
-FAILED: 1
+PASSED: 6
+FAILED: 2
 SKIPPED: 2
 RESULT: FAIL (exit 1)
-DURATION: 13.4s
-Completed: 2026-08-21T03:22:28.543Z
+DURATION: 19.4s
+Completed: 2026-08-21T03:26:09.179Z
 Log file: mcp-daytona-validation.log
 
 ========================================================================================
