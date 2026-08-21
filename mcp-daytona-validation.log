@@ -1,10 +1,11 @@
 MCP Daytona validation
-Started: 2026-08-21T07:30:02.056Z
+Started: 2026-08-21T07:42:06.670Z
 ========================================================================================
 PRE-FLIGHT
-PASS  Git head — f0bd1ab3306d244a8796e31b5003ffce391795bf
+PASS  Git head — e4c1f6971bc22941f0f0ecf9bbfea84ba2dd6d26
 PASS  Git branch — main
 PASS  Git working tree — clean
+PASS  Runner template sanity check — shell environment expansion and raw-string escaping look valid
 
 ========================================================================================
 INSTALL DEPENDENCIES
@@ -12,8 +13,7 @@ pnpm install --no-frozen-lockfile --reporter=append-only
 ----------------------------------------------------------------------------------------
 Lockfile is up to date, resolution step is skipped
 Progress: resolved 0, reused 1, downloaded 0, added 0
-Progress: resolved 0, reused 15, downloaded 0, added 0
-Progress: resolved 0, reused 56, downloaded 0, added 0
+Progress: resolved 0, reused 42, downloaded 0, added 0
 Packages: -168
 --------------------------------------------------------------------------------
 Progress: resolved 0, reused 167, downloaded 0, added 0, done
@@ -26,9 +26,9 @@ Progress: resolved 0, reused 167, downloaded 0, added 0, done
 │   to run scripts.                                                            │
 │                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-Done in 5.2s using pnpm v10.34.5
+Done in 4.8s using pnpm v10.34.5
 RESULT: PASS (exit 0)
-DURATION: 5.5s
+DURATION: 5.0s
 PASS  Dependency metadata diff check — lockfile already synchronized
 
 ========================================================================================
@@ -40,7 +40,7 @@ pnpm run typecheck
 > tsc --noEmit
 
 RESULT: PASS (exit 0)
-DURATION: 6.7s
+DURATION: 5.8s
 
 ========================================================================================
 LINT
@@ -51,7 +51,7 @@ pnpm run lint
 > eslint .
 
 RESULT: PASS (exit 0)
-DURATION: 9.5s
+DURATION: 7.1s
 
 SKIP  Tests — no test script configured
 
@@ -89,18 +89,18 @@ workerd compatibility_date: 2026-08-21
 
 ▲ Next.js 16.3.1 (Turbopack)
 - Environments: .env.local, .env
-✓ Running next.config.ts took 74ms
+✓ Running next.config.ts took 57ms
 
   Creating an optimized production build ...
-✓ Compiled successfully in 1355ms
+✓ Compiled successfully in 1229ms
   Running TypeScript ...
-  Finished TypeScript in 6.2s ...
+  Finished TypeScript in 5.2s ...
   Collecting page data using 6 workers ...
   Generating static pages using 6 workers (0/5) ...
   Generating static pages using 6 workers (1/5) 
   Generating static pages using 6 workers (2/5) 
   Generating static pages using 6 workers (3/5) 
-✓ Generating static pages using 6 workers (5/5) in 1564ms
+✓ Generating static pages using 6 workers (5/5) in 1221ms
   Finalizing page optimization ...
 
 Route (app)
@@ -117,13 +117,13 @@ Route (app)
 │ OpenNext — Generating bundle │
 └──────────────────────────────┘
 
-(node:27976) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(node:17968) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 Bundling middleware function...
 Bundling static assets...
 Bundling cache assets...
 Building server function: default...
-Applying code patches: 8.862s
+Applying code patches: 7.206s
 # copyPackageTemplateFiles
 [35m⚙️ Bundling the OpenNext server...
 [0m
@@ -131,7 +131,7 @@ Applying code patches: 8.862s
 [0m
 OpenNext build complete.
 RESULT: PASS (exit 0)
-DURATION: 41.1s
+DURATION: 37.7s
 PASS  Post-validation Git diff check — only the validation log changed
 
 ========================================================================================
@@ -139,6 +139,7 @@ FINAL SUMMARY
 PASS  Git head
 PASS  Git branch
 PASS  Git working tree
+PASS  Runner template sanity check
 PASS  Install dependencies
 PASS  Dependency metadata diff check
 PASS  Typecheck
@@ -147,13 +148,13 @@ SKIP  Tests
 SKIP  Fallow audit
 PASS  Cloudflare production build
 PASS  Post-validation Git diff check
-TOTAL: 11
-PASSED: 9
+TOTAL: 12
+PASSED: 10
 FAILED: 0
 SKIPPED: 2
 RESULT: PASS (exit 0)
-DURATION: 63.8s
-Completed: 2026-08-21T07:31:05.864Z
+DURATION: 56.7s
+Completed: 2026-08-21T07:43:03.384Z
 Log file: mcp-daytona-validation.log
 
 ========================================================================================
