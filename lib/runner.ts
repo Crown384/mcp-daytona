@@ -208,13 +208,6 @@ else
   printf 'clean\n'
 fi
 
-printf '\n== push checked HEAD ==\n'
-with_git_auth git push origin "HEAD:$BRANCH"
-PUSH_CODE=$?
-if [ "$PUSH_CODE" -ne 0 ] && [ "$STATUS" -eq 0 ]; then
-  STATUS="$PUSH_CODE"
-fi
-
 printf '\n== cycle result ==\nexit_code=%s\n' "$STATUS"
 exit "$STATUS"
 `;
