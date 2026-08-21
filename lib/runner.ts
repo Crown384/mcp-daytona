@@ -156,7 +156,7 @@ run_custom_command() {
   printf '\n== custom command ==\n'
   printf 'path=%s\n' "$WORKING_PATH"
   printf 'command=%s\n' "$COMMAND"
-  bash -lc "$COMMAND"
+  with_git_auth bash -lc "$COMMAND"
   CODE=$?
   if [ "$CODE" -ne 0 ] && [ "$STATUS" -eq 0 ]; then
     STATUS="$CODE"
