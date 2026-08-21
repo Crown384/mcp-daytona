@@ -57,10 +57,9 @@ function errorMessage(error: unknown): string {
 
 async function request(path: string, init: RequestInit = {}): Promise<Response> {
   const config = getConfig();
-  const response = await fetch(`${config.daytonaApiUrl}${path}`, {
-    ...init,
-    headers: { Authorization: `Bearer ${config.daytonaApiKey}`, ...init.headers },
-  });
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${config.daytonaApiKey}`);
+  const response = await fetch(`${config.daytonaApiUrl}${path}`, { ...init, headers });
 
   if (!response.ok) {
     const text = await response.text();
@@ -72,7 +71,9 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
 async function requestJson(path: string, init: RequestInit = {}): Promise<unknown> {
   const response = await request(path, init);
   const text = await response.text();
-  return text ? (JSON.parse(text) as unknown) : {};
+  if (!text) return {};
+  const value: unknown = JSON.parse(text);
+  return value;
 }
 
 function truncateLog(log: string): string {
@@ -212,7 +213,8 @@ function filterManagedList(value: unknown): unknown {
   if (!isRecord(value)) return [];
 
   for (const key of ["items", "sandboxes", "data"] as const) {
-    if (Array.isArray(value[key])) return { ...value, [key]: value[key].filter(isManagedSandbox) };
+    const items = value[key];
+    if (Array.isArray(items)) return { ...value, [key]: items.filter(isManagedSandbox) };
   }
   return [];
 }
