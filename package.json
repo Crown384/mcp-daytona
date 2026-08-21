@@ -1,12 +1,16 @@
 {
-  "name": "daytona",
+  "name": "mcp-daytona",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "check": "pnpm run typecheck && pnpm run lint",
+    "cf:build": "pnpm dlx @opennextjs/cloudflare@latest build",
+    "deploy": "pnpm run check && pnpm run cf:build && pnpm dlx wrangler@latest deploy"
   },
   "dependencies": {
     "next": "16.3.1",
