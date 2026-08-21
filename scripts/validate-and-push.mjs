@@ -1,5 +1,5 @@
 import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { performance } from "node:perf_hooks";
 
 const LOG_FILE = "mcp-daytona-validation.log";
@@ -16,8 +16,14 @@ writeFileSync(
 );
 
 function log(text = "") {
-  process.stdout.write(`${text}\n`);
-  appendFileSync(LOG_FILE, `${text}\n`, "utf8");
+  const line = `${text}\n`;
+  process.stdout.write(line);
+  appendFileSync(LOG_FILE, line, "utf8");
+}
+
+function stream(text) {
+  process.stdout.write(text);
+  appendFileSync(LOG_FILE, text, "utf8");
 }
 
 function consoleOnly(text = "") {
@@ -31,23 +37,34 @@ function run(label, command, args, displayCommand = `${command} ${args.join(" ")
   log(displayCommand);
   log("-".repeat(88));
 
-  const result = spawnSync(command, args, {
-    cwd: process.cwd(),
-    encoding: "utf8",
-    env: { ...process.env, ...envOverrides },
-    windowsHide: true,
+  return new Promise((resolve) => {
+    let processError;
+    const child = spawn(command, args, {
+      cwd: process.cwd(),
+      env: { ...process.env, ...envOverrides },
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", stream);
+    child.stderr.on("data", stream);
+
+    child.on("error", (error) => {
+      processError = error;
+      log(`PROCESS ERROR: ${error.message}`);
+    });
+
+    child.on("close", (code) => {
+      const exitCode = processError ? 1 : (code ?? 1);
+      const durationSeconds = (performance.now() - stepStarted) / 1000;
+      results.push({ label, exitCode, durationSeconds });
+      log(`RESULT: ${exitCode === 0 ? "PASS" : "FAIL"} (exit ${exitCode})`);
+      log(`DURATION: ${durationSeconds.toFixed(1)}s`);
+      resolve(exitCode === 0);
+    });
   });
-
-  if (result.stdout) log(result.stdout.trimEnd());
-  if (result.stderr) log(result.stderr.trimEnd());
-  if (result.error) log(`PROCESS ERROR: ${result.error.message}`);
-
-  const exitCode = result.status ?? 1;
-  const durationSeconds = (performance.now() - stepStarted) / 1000;
-  results.push({ label, exitCode, durationSeconds });
-  log(`RESULT: ${exitCode === 0 ? "PASS" : "FAIL"} (exit ${exitCode})`);
-  log(`DURATION: ${durationSeconds.toFixed(1)}s`);
-  return exitCode === 0;
 }
 
 function runPnpm(label, args, envOverrides = {}) {
@@ -150,7 +167,11 @@ let canValidate = Boolean(head) && Boolean(branch) && initialChanges.length === 
 let lockfileChanged = false;
 
 if (canValidate) {
-  canValidate = runPnpm("Install dependencies", ["install", "--no-frozen-lockfile"], { CI: "true" }) && canValidate;
+  canValidate = await runPnpm(
+    "Install dependencies",
+    ["install", "--no-frozen-lockfile", "--reporter=append-only"],
+    { CI: "true" },
+  ) && canValidate;
   const installChanges = workingTreeChangesWithoutLog();
   lockfileChanged = installChanges.some((line) => line.endsWith(` ${LOCK_FILE}`) || line.endsWith(` \"${LOCK_FILE}\"`));
   canValidate = record(
@@ -159,27 +180,27 @@ if (canValidate) {
     installChanges.length === 0 ? "lockfile already synchronized" : installChanges.join(" | "),
   ) && canValidate;
 
-  canValidate = runPnpm("Typecheck", ["run", "typecheck"]) && canValidate;
-  canValidate = runPnpm("Lint", ["run", "lint"]) && canValidate;
+  canValidate = await runPnpm("Typecheck", ["run", "typecheck"]) && canValidate;
+  canValidate = await runPnpm("Lint", ["run", "lint"]) && canValidate;
 
   if (hasPackageScript("test")) {
-    canValidate = runPnpm("Tests", ["run", "test"]) && canValidate;
+    canValidate = await runPnpm("Tests", ["run", "test"]) && canValidate;
   } else {
     results.push({ label: "Tests", exitCode: 0, durationSeconds: 0, skipped: true });
     log("\nSKIP  Tests — no test script configured");
   }
 
   if (hasPackageScript("fallow")) {
-    canValidate = runPnpm("Fallow audit", ["run", "fallow"]) && canValidate;
+    canValidate = await runPnpm("Fallow audit", ["run", "fallow"]) && canValidate;
   } else if (existsSync("node_modules/.bin/fallow") || existsSync("node_modules/.bin/fallow.cmd")) {
-    canValidate = runPnpm("Fallow audit", ["exec", "fallow"]) && canValidate;
+    canValidate = await runPnpm("Fallow audit", ["exec", "fallow"]) && canValidate;
   } else {
     results.push({ label: "Fallow audit", exitCode: 0, durationSeconds: 0, skipped: true });
     log("\nSKIP  Fallow audit — Fallow is not configured in this repository");
   }
 
   rmSync(".open-next", { recursive: true, force: true });
-  canValidate = runPnpm("Cloudflare production build", ["run", "cf:build"]) && canValidate;
+  canValidate = await runPnpm("Cloudflare production build", ["run", "cf:build"]) && canValidate;
 
   const postChanges = workingTreeChangesWithoutLog();
   canValidate = record(
