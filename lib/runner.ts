@@ -1,8 +1,10 @@
 export const RUNNER_SCRIPT = String.raw`set -uo pipefail
 
 STATUS=0
-ACTION="$(printenv ACTION 2>/dev/null || printf 'fresh')"
-SYNC_MODE="$(printenv SYNC_MODE 2>/dev/null || printf 'reset')"
+ACTION="$(printenv ACTION 2>/dev/null)"
+SYNC_MODE="$(printenv SYNC_MODE 2>/dev/null)"
+[ -n "$ACTION" ] || ACTION="fresh"
+[ -n "$SYNC_MODE" ] || SYNC_MODE="reset"
 REPO_DIR="$HOME/workspace/repo"
 CONTEXT_FILE="$HOME/.mcp-daytona-context"
 TOKEN_SECRET="$GITHUB_TOKEN"
@@ -17,8 +19,8 @@ with_git_auth() {
   cat > "$ASKPASS" <<EOF
 #!/bin/sh
 case "\$1" in
-  *Username*) printf '%s\\n' 'x-access-token' ;;
-  *) cat "$TOKEN_FILE"; printf '\\n' ;;
+  *Username*) printf '%s\n' 'x-access-token' ;;
+  *) cat "$TOKEN_FILE"; printf '\n' ;;
 esac
 EOF
   chmod 700 "$ASKPASS"
