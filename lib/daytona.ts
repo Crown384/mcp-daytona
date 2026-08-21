@@ -27,6 +27,8 @@ export type RunCycleInput = Readonly<{
   afterRun: AfterRun;
   snapshot: SandboxSnapshot;
   autoStopMinutes: number;
+  command?: string;
+  workingPath: string;
 }>;
 
 export type RerunCycleInput = Readonly<{
@@ -34,6 +36,8 @@ export type RerunCycleInput = Readonly<{
   timeoutSeconds: number;
   syncMode: SyncMode;
   afterRun: AfterRun;
+  command?: string;
+  workingPath: string;
 }>;
 
 export type CycleResult = Readonly<{
@@ -148,6 +152,8 @@ async function executeRunner(
   repository?: string,
   branch?: string,
   syncMode: SyncMode = "reset",
+  command?: string,
+  workingPath = ".",
 ): Promise<{ exitCode: number; log: string }> {
   const config = getConfig();
   const encodedScript = btoa(RUNNER_SCRIPT);
@@ -156,9 +162,11 @@ async function executeRunner(
     GITHUB_OWNER: config.githubOwner,
     ACTION: action,
     SYNC_MODE: syncMode,
+    WORKING_PATH: workingPath,
   };
   if (repository) envs.REPOSITORY = repository;
   if (branch) envs.BRANCH = branch;
+  if (command) envs.COMMAND = command;
 
   const response = await fetch(`${DAYTONA_TOOLBOX_URL}/${encodeURIComponent(sandboxId)}/process/execute`, {
     method: "POST",
@@ -222,7 +230,16 @@ export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
   let execution: { exitCode: number; log: string };
 
   try {
-    execution = await executeRunner(sandboxId, "fresh", input.timeoutSeconds, input.repository, input.branch);
+    execution = await executeRunner(
+      sandboxId,
+      "fresh",
+      input.timeoutSeconds,
+      input.repository,
+      input.branch,
+      "reset",
+      input.command,
+      input.workingPath,
+    );
   } catch (error) {
     const lifecycle = await applyAfterRun(sandboxId, input.afterRun);
     const suffix = lifecycle.lifecycleError ? ` Lifecycle action also failed: ${lifecycle.lifecycleError}` : "";
@@ -245,7 +262,16 @@ export async function rerunCycle(input: RerunCycleInput): Promise<CycleResult> {
   const sandbox = await getManagedSandboxRaw(input.sandboxId);
   const context = managedContext(sandbox);
   await ensureStarted(input.sandboxId, sandbox);
-  const execution = await executeRunner(input.sandboxId, "rerun", input.timeoutSeconds, undefined, undefined, input.syncMode);
+  const execution = await executeRunner(
+    input.sandboxId,
+    "rerun",
+    input.timeoutSeconds,
+    undefined,
+    undefined,
+    input.syncMode,
+    input.command,
+    input.workingPath,
+  );
   const lifecycle = await applyAfterRun(input.sandboxId, input.afterRun);
   return { ...context, sandboxId: input.sandboxId, exitCode: execution.exitCode, log: execution.log, afterRun: input.afterRun, ...lifecycle };
 }
