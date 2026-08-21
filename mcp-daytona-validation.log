@@ -1,42 +1,22 @@
 MCP Daytona validation
-Started: 2026-08-21T04:58:11.200Z
+Started: 2026-08-21T07:24:04.850Z
 ========================================================================================
 PRE-FLIGHT
-PASS  Git head — 57fdf8d7db27217fe97b725f22608115a14c2b02
+PASS  Git head — 84cab6f37b85042605d35e61daacf9cc86b20198
 PASS  Git branch — main
 PASS  Git working tree — clean
 
 ========================================================================================
 INSTALL DEPENDENCIES
-pnpm install --no-frozen-lockfile
+pnpm install --no-frozen-lockfile --reporter=append-only
 ----------------------------------------------------------------------------------------
-Recreating C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona\node_modules
 Lockfile is up to date, resolution step is skipped
-Packages: +630
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Progress: resolved 0, reused 1, downloaded 0, added 0
-Progress: resolved 0, reused 100, downloaded 0, added 0
-Progress: resolved 0, reused 310, downloaded 0, added 0
-Progress: resolved 0, reused 612, downloaded 0, added 0
-Progress: resolved 0, reused 619, downloaded 0, added 65
-Progress: resolved 0, reused 619, downloaded 0, added 96
-Progress: resolved 0, reused 619, downloaded 0, added 109
-Progress: resolved 0, reused 619, downloaded 0, added 124
-Progress: resolved 0, reused 619, downloaded 0, added 200
-Progress: resolved 0, reused 619, downloaded 0, added 232
-Progress: resolved 0, reused 619, downloaded 0, added 278
-Progress: resolved 0, reused 619, downloaded 0, added 305
-Progress: resolved 0, reused 619, downloaded 0, added 372
-Progress: resolved 0, reused 619, downloaded 0, added 434
-Progress: resolved 0, reused 619, downloaded 0, added 515
-Progress: resolved 0, reused 619, downloaded 0, added 573
-Progress: resolved 0, reused 619, downloaded 0, added 599
-Progress: resolved 0, reused 619, downloaded 0, added 614
-Progress: resolved 0, reused 619, downloaded 0, added 625
-Progress: resolved 0, reused 619, downloaded 0, added 626
-Progress: resolved 0, reused 619, downloaded 0, added 627
-Progress: resolved 0, reused 619, downloaded 0, added 628
-Progress: resolved 0, reused 619, downloaded 0, added 630, done
+Progress: resolved 0, reused 13, downloaded 0, added 0
+Progress: resolved 0, reused 52, downloaded 0, added 0
+Packages: -168
+--------------------------------------------------------------------------------
+Progress: resolved 0, reused 166, downloaded 0, added 0, done
 
 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
 │                                                                              │
@@ -46,9 +26,9 @@ Progress: resolved 0, reused 619, downloaded 0, added 630, done
 │   to run scripts.                                                            │
 │                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-Done in 46.8s using pnpm v10.34.5
+Done in 5.7s using pnpm v10.34.5
 RESULT: PASS (exit 0)
-DURATION: 47.1s
+DURATION: 9.5s
 PASS  Dependency metadata diff check — lockfile already synchronized
 
 ========================================================================================
@@ -58,8 +38,9 @@ pnpm run typecheck
 
 > mcp-daytona@0.2.0 typecheck C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
 > tsc --noEmit
+
 RESULT: PASS (exit 0)
-DURATION: 10.1s
+DURATION: 8.9s
 
 ========================================================================================
 LINT
@@ -68,8 +49,9 @@ pnpm run lint
 
 > mcp-daytona@0.2.0 lint C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
 > eslint .
+
 RESULT: PASS (exit 0)
-DURATION: 15.9s
+DURATION: 11.5s
 
 SKIP  Tests — no test script configured
 
@@ -88,6 +70,9 @@ pnpm run cf:build
 │ OpenNext — Cloudflare build │
 └─────────────────────────────┘
 
+WARN OpenNext is not fully compatible with Windows.
+WARN For optimal performance, it is recommended to use Windows Subsystem for Linux (WSL).
+WARN While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.
 App directory: C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
 Next.js version : 16.3.1
 @opennextjs/cloudflare version: 1.20.2
@@ -103,19 +88,19 @@ workerd compatibility_date: 2026-08-21
 > next build
 
 ▲ Next.js 16.3.1 (Turbopack)
-- Environments: .env.local
-✓ Running next.config.ts took 310ms
+- Environments: .env.local, .env
+✓ Running next.config.ts took 362ms
 
   Creating an optimized production build ...
-✓ Compiled successfully in 10.4s
+✓ Compiled successfully in 3.4s
   Running TypeScript ...
-  Finished TypeScript in 6.0s ...
+  Finished TypeScript in 7.5s ...
   Collecting page data using 6 workers ...
   Generating static pages using 6 workers (0/5) ...
   Generating static pages using 6 workers (1/5) 
   Generating static pages using 6 workers (2/5) 
   Generating static pages using 6 workers (3/5) 
-✓ Generating static pages using 6 workers (5/5) in 1187ms
+✓ Generating static pages using 6 workers (5/5) in 1587ms
   Finalizing page optimization ...
 
 Route (app)
@@ -132,24 +117,21 @@ Route (app)
 │ OpenNext — Generating bundle │
 └──────────────────────────────┘
 
+(node:25920) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
 Bundling middleware function...
 Bundling static assets...
 Bundling cache assets...
 Building server function: default...
-Applying code patches: 8.581s
+Applying code patches: 9.730s
 # copyPackageTemplateFiles
 [35m⚙️ Bundling the OpenNext server...
 [0m
 [35mWorker saved in `.open-next\worker.js` 🚀
 [0m
 OpenNext build complete.
-WARN OpenNext is not fully compatible with Windows.
-WARN For optimal performance, it is recommended to use Windows Subsystem for Linux (WSL).
-WARN While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.
-(node:27276) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
-(Use `node --trace-deprecation ...` to show where the warning was created)
 RESULT: PASS (exit 0)
-DURATION: 54.2s
+DURATION: 51.5s
 PASS  Post-validation Git diff check — only the validation log changed
 
 ========================================================================================
@@ -170,8 +152,8 @@ PASSED: 9
 FAILED: 0
 SKIPPED: 2
 RESULT: PASS (exit 0)
-DURATION: 127.9s
-Completed: 2026-08-21T05:00:19.061Z
+DURATION: 82.8s
+Completed: 2026-08-21T07:25:27.686Z
 Log file: mcp-daytona-validation.log
 
 ========================================================================================
