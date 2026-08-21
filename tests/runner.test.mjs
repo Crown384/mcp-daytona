@@ -51,8 +51,14 @@ test("runner reads required environment values explicitly", () => {
 test("runner exposes arbitrary command execution with root path default", () => {
   assert.match(runner, /WORKING_PATH=.*printenv WORKING_PATH/);
   assert.match(runner, /WORKING_PATH="\."/);
-  assert.match(runner, /bash -lc "\$COMMAND"/);
+  assert.match(runner, /with_git_auth bash -lc "\$COMMAND"/);
   assert.match(runner, /== custom command ==/);
+});
+
+test("arbitrary commands inherit protected Git authentication", () => {
+  assert.match(runner, /unset GITHUB_TOKEN/);
+  assert.match(runner, /GIT_ASKPASS="\$ASKPASS" "\$@"/);
+  assert.match(runner, /with_git_auth bash -lc "\$COMMAND"/);
 });
 
 test("runner validates the selected working directory stays in the repo", () => {
@@ -90,7 +96,7 @@ test("runner Git credentials are temporary, cleaned, and use configured owner", 
   assert.equal(runner.includes("x-access-token"), false);
 });
 
-test("runner is read-only and never pushes implementation source", () => {
+test("runner implementation never pushes source on its own", () => {
   assert.equal(/git\s+push/.test(runner), false);
   assert.equal(/git\s+commit/.test(runner), false);
   assert.equal(/git\s+add/.test(runner), false);
@@ -101,10 +107,12 @@ test("runner rejects dirty working trees caused by execution commands", () => {
   assert.match(runner, /Repository working tree changed during the execution cycle/);
 });
 
-test("live smoke test uses exact runner, clones pamaos-next main, runs command, and destroys sandbox", () => {
+test("live smoke test uses exact runner, authenticated git pull, command, and cleanup", () => {
   assert.match(smokeSource, /loadRunnerScript/);
   assert.match(smokeSource, /const REPOSITORY = "pamaos-next"/);
   assert.match(smokeSource, /const BRANCH = "main"/);
+  assert.match(smokeSource, /git pull --ff-only origin/);
+  assert.match(smokeSource, /SMOKE_PULL=ok/);
   assert.match(smokeSource, /COMMAND: smokeCommand/);
   assert.match(smokeSource, /WORKING_PATH: "\."/);
   assert.match(smokeSource, /== custom command ==/);
