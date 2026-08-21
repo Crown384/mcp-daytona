@@ -1,31 +1,41 @@
 MCP Daytona validation
-Started: 2026-08-21T03:13:07.477Z
+Started: 2026-08-21T03:18:52.514Z
 ========================================================================================
 PRE-FLIGHT
-PASS  Git head — cdebfa9d692d793fee75a3cbd86581246803169a
+PASS  Git head — 3bd30620667faf5a7ff84dc2909ebc5c5ea770bf
 PASS  Git branch — main
 PASS  Git working tree — clean
 
 ========================================================================================
 INSTALL DEPENDENCIES
-pnpm.cmd install --frozen-lockfile
+pnpm install --frozen-lockfile
 ----------------------------------------------------------------------------------------
-RESULT: FAIL (exit 1)
-DURATION: 0.0s
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 1.1s using pnpm v10.34.5
+RESULT: PASS (exit 0)
+DURATION: 1.3s
 
 ========================================================================================
 TYPECHECK
-pnpm.cmd run typecheck
+pnpm run typecheck
 ----------------------------------------------------------------------------------------
-RESULT: FAIL (exit 1)
-DURATION: 0.0s
+
+> mcp-daytona@0.2.0 typecheck C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
+> tsc --noEmit
+RESULT: PASS (exit 0)
+DURATION: 5.7s
 
 ========================================================================================
 LINT
-pnpm.cmd run lint
+pnpm run lint
 ----------------------------------------------------------------------------------------
-RESULT: FAIL (exit 1)
-DURATION: 0.0s
+
+> mcp-daytona@0.2.0 lint C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
+> eslint .
+RESULT: PASS (exit 0)
+DURATION: 14.6s
 
 SKIP  Tests — no test script configured
 
@@ -33,10 +43,94 @@ SKIP  Fallow audit — Fallow is not configured in this repository
 
 ========================================================================================
 CLOUDFLARE PRODUCTION BUILD
-pnpm.cmd run cf:build
+pnpm run cf:build
 ----------------------------------------------------------------------------------------
+
+> mcp-daytona@0.2.0 cf:build C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
+> pnpm dlx @opennextjs/cloudflare@latest build
+
+
+┌─────────────────────────────┐
+│ OpenNext — Cloudflare build │
+└─────────────────────────────┘
+
+ ELIFECYCLE  Command failed with exit code 1.
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 4, reused 2, downloaded 0, added 0
+Progress: resolved 17, reused 9, downloaded 1, added 0
+Progress: resolved 29, reused 18, downloaded 2, added 0
+Progress: resolved 51, reused 41, downloaded 2, added 0
+Progress: resolved 115, reused 78, downloaded 2, added 0
+Progress: resolved 131, reused 89, downloaded 2, added 0
+Progress: resolved 148, reused 89, downloaded 19, added 0
+Progress: resolved 160, reused 89, downloaded 26, added 0
+Progress: resolved 168, reused 91, downloaded 38, added 0
+Progress: resolved 187, reused 104, downloaded 45, added 0
+Progress: resolved 227, reused 140, downloaded 52, added 0
+Progress: resolved 263, reused 166, downloaded 57, added 0
+Progress: resolved 298, reused 197, downloaded 65, added 0
+Progress: resolved 313, reused 209, downloaded 70, added 0
+Progress: resolved 313, reused 209, downloaded 72, added 0
+Progress: resolved 314, reused 209, downloaded 72, added 0
+Progress: resolved 325, reused 218, downloaded 72, added 0
+Progress: resolved 335, reused 221, downloaded 72, added 0
+Progress: resolved 362, reused 225, downloaded 72, added 0
+Progress: resolved 364, reused 227, downloaded 72, added 0
+Progress: resolved 429, reused 241, downloaded 72, added 0
+Progress: resolved 433, reused 244, downloaded 72, added 0
+Progress: resolved 443, reused 250, downloaded 74, added 0
+Progress: resolved 445, reused 252, downloaded 74, added 0
+Progress: resolved 447, reused 254, downloaded 75, added 0
+ WARN  2 deprecated subdependencies found: glob@9.3.5, node-domexception@1.0.0
+Progress: resolved 448, reused 254, downloaded 75, added 0
+Packages: +328
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 448, reused 255, downloaded 75, added 31
+Progress: resolved 448, reused 255, downloaded 75, added 32
+Progress: resolved 448, reused 255, downloaded 75, added 70
+Progress: resolved 448, reused 255, downloaded 75, added 71
+Progress: resolved 448, reused 255, downloaded 75, added 183
+Progress: resolved 448, reused 255, downloaded 75, added 270
+Progress: resolved 448, reused 255, downloaded 75, added 271
+Progress: resolved 448, reused 255, downloaded 76, added 297
+Progress: resolved 448, reused 255, downloaded 76, added 326
+Progress: resolved 448, reused 255, downloaded 76, added 327
+Progress: resolved 448, reused 255, downloaded 76, added 328
+Progress: resolved 448, reused 255, downloaded 76, added 328, done
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: esbuild@0.25.4, esbuild@0.28.1,                     │
+│   workerd@1.20260820.1.                                                      │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+WARN OpenNext is not fully compatible with Windows.
+WARN For optimal performance, it is recommended to use Windows Subsystem for Linux (WSL).
+WARN While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.
+file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/@opennextjs+cloudflare@1.20_c0c6951cd649df2f66a9b09dc7111830/node_modules/@opennextjs/cloudflare/dist/cli/commands/utils/utils.js:49
+            throw new Error(`No \`${OPEN_NEXT_CONFIG_FILE_NAME}\` file was found in the project root.\n\nThis file is required for OpenNext Cloudflare builds.\nRun \`opennextjs-cloudflare migrate\` to create it, or see https://opennext.js.org/cloudflare/get-started for setup guidance.\nCommit it and re-run the build.`);
+                  ^
+
+Error: No `open-next.config.ts` file was found in the project root.
+
+This file is required for OpenNext Cloudflare builds.
+Run `opennextjs-cloudflare migrate` to create it, or see https://opennext.js.org/cloudflare/get-started for setup guidance.
+Commit it and re-run the build.
+    at compileConfig (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/@opennextjs+cloudflare@1.20_c0c6951cd649df2f66a9b09dc7111830/node_modules/@opennextjs/cloudflare/dist/cli/commands/utils/utils.js:49:19)
+    at buildCommand (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/@opennextjs+cloudflare@1.20_c0c6951cd649df2f66a9b09dc7111830/node_modules/@opennextjs/cloudflare/dist/cli/commands/build.js:14:40)
+    at Object.handler (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/@opennextjs+cloudflare@1.20_c0c6951cd649df2f66a9b09dc7111830/node_modules/@opennextjs/cloudflare/dist/cli/commands/build.js:73:19)
+    at file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/command.js:245:54
+    at maybeAsyncResult (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/utils/maybe-async-result.js:9:15)
+    at CommandInstance.handleValidationAndGetResult (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/command.js:244:25)
+    at CommandInstance.applyMiddlewareAndGetResult (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/command.js:284:20)
+    at CommandInstance.runCommand (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/command.js:167:20)
+    at [runYargsParserAndExecuteCommands] (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/yargs-factory.js:1389:105)
+    at YargsInstance.parse (file:///C:/Users/crown/AppData/Local/pnpm-cache/dlx/e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc/1a022547d16-6294/node_modules/.pnpm/yargs@18.1.0/node_modules/yargs/build/lib/yargs-factory.js:704:63)
+
+Node.js v24.13.1
 RESULT: FAIL (exit 1)
-DURATION: 0.0s
+DURATION: 59.8s
 PASS  Post-validation Git diff check — only the validation log changed
 
 ========================================================================================
@@ -44,20 +138,20 @@ FINAL SUMMARY
 PASS  Git head
 PASS  Git branch
 PASS  Git working tree
-FAIL  Install dependencies
-FAIL  Typecheck
-FAIL  Lint
+PASS  Install dependencies
+PASS  Typecheck
+PASS  Lint
 SKIP  Tests
 SKIP  Fallow audit
 FAIL  Cloudflare production build
 PASS  Post-validation Git diff check
 TOTAL: 10
-PASSED: 4
-FAILED: 4
+PASSED: 7
+FAILED: 1
 SKIPPED: 2
 RESULT: FAIL (exit 1)
-DURATION: 0.3s
-Completed: 2026-08-21T03:13:07.769Z
+DURATION: 81.7s
+Completed: 2026-08-21T03:20:14.260Z
 Log file: mcp-daytona-validation.log
 
 ========================================================================================
