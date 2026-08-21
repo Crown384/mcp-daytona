@@ -30,14 +30,36 @@ Cloudflare variables:
 
 `wrangler.jsonc` uses `keep_vars: true`, so deployments preserve variables configured in the Cloudflare dashboard.
 
-## Deploy
+## Local validation workflow
+
+After pulling the latest branch, run one command:
 
 ```bash
-pnpm install
+pnpm run validate:push
+```
+
+That single script:
+
+1. verifies Git HEAD, branch, and a clean working tree;
+2. installs dependencies from the lockfile;
+3. runs TypeScript type checking and ESLint;
+4. runs tests when a `test` script exists;
+5. runs Fallow when it is configured;
+6. builds the production Cloudflare/OpenNext bundle;
+7. verifies the validation did not modify tracked source files;
+8. writes the complete output and final PASS/FAIL summary to `mcp-daytona-validation.log`;
+9. commits only that log file; and
+10. pushes the log commit to the current branch.
+
+The log is pushed on both passing and failing validation runs so it can be reviewed remotely. The script never stages or commits implementation changes.
+
+After a passing validation log has been reviewed, deploy the already-built production bundle with:
+
+```bash
 pnpm run deploy
 ```
 
-`pnpm run deploy` type-checks, lints, builds the Next.js Worker with OpenNext, then deploys the single production Worker.
+`pnpm run deploy` only publishes the existing `.open-next` production build; it does not repeat the validation/build cycle.
 
 ## Connect the private ChatGPT plugin
 
