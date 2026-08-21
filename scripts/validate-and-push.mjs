@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { performance } from "node:perf_hooks";
 
@@ -24,7 +24,7 @@ function consoleOnly(text = "") {
   process.stdout.write(`${text}\n`);
 }
 
-function run(label, command, args, displayCommand = `${command} ${args.join(" ")}`) {
+function run(label, command, args, displayCommand = `${command} ${args.join(" ")}`, envOverrides = {}) {
   const stepStarted = performance.now();
   log(`\n${"=".repeat(88)}`);
   log(label.toUpperCase());
@@ -34,7 +34,7 @@ function run(label, command, args, displayCommand = `${command} ${args.join(" ")
   const result = spawnSync(command, args, {
     cwd: process.cwd(),
     encoding: "utf8",
-    env: process.env,
+    env: { ...process.env, ...envOverrides },
     windowsHide: true,
   });
 
@@ -50,12 +50,12 @@ function run(label, command, args, displayCommand = `${command} ${args.join(" ")
   return exitCode === 0;
 }
 
-function runPnpm(label, args) {
+function runPnpm(label, args, envOverrides = {}) {
   const displayCommand = `pnpm ${args.join(" ")}`;
   if (pnpmCli) {
-    return run(label, process.execPath, [pnpmCli, ...args], displayCommand);
+    return run(label, process.execPath, [pnpmCli, ...args], displayCommand, envOverrides);
   }
-  return run(label, "pnpm", args, displayCommand);
+  return run(label, "pnpm", args, displayCommand, envOverrides);
 }
 
 function record(label, passed, detail) {
@@ -150,7 +150,7 @@ let canValidate = Boolean(head) && Boolean(branch) && initialChanges.length === 
 let lockfileChanged = false;
 
 if (canValidate) {
-  canValidate = runPnpm("Install dependencies", ["install", "--no-frozen-lockfile"]) && canValidate;
+  canValidate = runPnpm("Install dependencies", ["install", "--no-frozen-lockfile"], { CI: "true" }) && canValidate;
   const installChanges = workingTreeChangesWithoutLog();
   lockfileChanged = installChanges.some((line) => line.endsWith(` ${LOCK_FILE}`) || line.endsWith(` \"${LOCK_FILE}\"`));
   canValidate = record(
@@ -178,6 +178,7 @@ if (canValidate) {
     log("\nSKIP  Fallow audit — Fallow is not configured in this repository");
   }
 
+  rmSync(".open-next", { recursive: true, force: true });
   canValidate = runPnpm("Cloudflare production build", ["run", "cf:build"]) && canValidate;
 
   const postChanges = workingTreeChangesWithoutLog();
