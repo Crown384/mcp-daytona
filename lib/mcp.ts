@@ -76,12 +76,17 @@ function parseRequest(value: unknown): RpcRequest | undefined {
     return undefined;
   }
 
-  if ("id" in value && value.id !== null && typeof value.id !== "string" && typeof value.id !== "number") {
-    return undefined;
+  let id: JsonRpcId | undefined;
+  if ("id" in value) {
+    const rawId = value.id;
+    if (rawId !== null && typeof rawId !== "string" && typeof rawId !== "number") {
+      return undefined;
+    }
+    id = rawId;
   }
 
   return {
-    ...(value.id === undefined ? {} : { id: value.id as JsonRpcId }),
+    ...(id === undefined ? {} : { id }),
     method: value.method,
     ...(value.params === undefined ? {} : { params: value.params }),
   };
@@ -114,7 +119,7 @@ function parseRunCycleInput(value: unknown): { repository: string; branch: strin
   }
 
   const timeoutSeconds = value.timeout_seconds === undefined ? 1200 : value.timeout_seconds;
-  if (!Number.isInteger(timeoutSeconds) || typeof timeoutSeconds !== "number" || timeoutSeconds < 60 || timeoutSeconds > 3600) {
+  if (typeof timeoutSeconds !== "number" || !Number.isInteger(timeoutSeconds) || timeoutSeconds < 60 || timeoutSeconds > 3600) {
     throw new Error("timeout_seconds must be an integer between 60 and 3600");
   }
 
@@ -125,9 +130,12 @@ function initializeResult(params: unknown): JsonRecord {
   const requestedVersion = isRecord(params) && typeof params.protocolVersion === "string"
     ? params.protocolVersion
     : LEGACY_PROTOCOL;
+  const protocolVersion = requestedVersion === CURRENT_PROTOCOL || requestedVersion === LEGACY_PROTOCOL
+    ? requestedVersion
+    : LEGACY_PROTOCOL;
 
   return {
-    protocolVersion: requestedVersion,
+    protocolVersion,
     capabilities: { tools: {} },
     serverInfo: SERVER_INFO,
     instructions: SERVER_INSTRUCTIONS,
