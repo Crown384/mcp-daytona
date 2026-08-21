@@ -5,7 +5,7 @@ import { performance } from "node:perf_hooks";
 const LOG_FILE = "mcp-daytona-validation.log";
 const startedAt = new Date();
 const started = performance.now();
-const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const pnpmCli = process.env.npm_execpath?.trim();
 const results = [];
 
 writeFileSync(
@@ -23,11 +23,11 @@ function consoleOnly(text = "") {
   process.stdout.write(`${text}\n`);
 }
 
-function run(label, command, args) {
+function run(label, command, args, displayCommand = `${command} ${args.join(" ")}`) {
   const stepStarted = performance.now();
   log(`\n${"=".repeat(88)}`);
   log(label.toUpperCase());
-  log(`${command} ${args.join(" ")}`);
+  log(displayCommand);
   log("-".repeat(88));
 
   const result = spawnSync(command, args, {
@@ -39,6 +39,7 @@ function run(label, command, args) {
 
   if (result.stdout) log(result.stdout.trimEnd());
   if (result.stderr) log(result.stderr.trimEnd());
+  if (result.error) log(`PROCESS ERROR: ${result.error.message}`);
 
   const exitCode = result.status ?? 1;
   const durationSeconds = (performance.now() - stepStarted) / 1000;
@@ -46,6 +47,14 @@ function run(label, command, args) {
   log(`RESULT: ${exitCode === 0 ? "PASS" : "FAIL"} (exit ${exitCode})`);
   log(`DURATION: ${durationSeconds.toFixed(1)}s`);
   return exitCode === 0;
+}
+
+function runPnpm(label, args) {
+  const displayCommand = `pnpm ${args.join(" ")}`;
+  if (pnpmCli) {
+    return run(label, process.execPath, [pnpmCli, ...args], displayCommand);
+  }
+  return run(label, "pnpm", args, displayCommand);
 }
 
 function record(label, passed, detail) {
@@ -78,6 +87,7 @@ function hasPackageScript(name) {
 function printProcessOutput(result) {
   if (result.stdout) consoleOnly(result.stdout.trimEnd());
   if (result.stderr) consoleOnly(result.stderr.trimEnd());
+  if (result.error) consoleOnly(`PROCESS ERROR: ${result.error.message}`);
 }
 
 function commitAndPushLog(branch, validationPassed) {
@@ -129,27 +139,27 @@ record("Git working tree", initialChanges.length === 0, initialChanges.length ==
 let canValidate = Boolean(head) && Boolean(branch) && initialChanges.length === 0;
 
 if (canValidate) {
-  canValidate = run("Install dependencies", pnpm, ["install", "--frozen-lockfile"]) && canValidate;
-  canValidate = run("Typecheck", pnpm, ["run", "typecheck"]) && canValidate;
-  canValidate = run("Lint", pnpm, ["run", "lint"]) && canValidate;
+  canValidate = runPnpm("Install dependencies", ["install", "--frozen-lockfile"]) && canValidate;
+  canValidate = runPnpm("Typecheck", ["run", "typecheck"]) && canValidate;
+  canValidate = runPnpm("Lint", ["run", "lint"]) && canValidate;
 
   if (hasPackageScript("test")) {
-    canValidate = run("Tests", pnpm, ["run", "test"]) && canValidate;
+    canValidate = runPnpm("Tests", ["run", "test"]) && canValidate;
   } else {
     results.push({ label: "Tests", exitCode: 0, durationSeconds: 0, skipped: true });
     log("\nSKIP  Tests — no test script configured");
   }
 
   if (hasPackageScript("fallow")) {
-    canValidate = run("Fallow audit", pnpm, ["run", "fallow"]) && canValidate;
+    canValidate = runPnpm("Fallow audit", ["run", "fallow"]) && canValidate;
   } else if (existsSync("node_modules/.bin/fallow") || existsSync("node_modules/.bin/fallow.cmd")) {
-    canValidate = run("Fallow audit", pnpm, ["exec", "fallow"]) && canValidate;
+    canValidate = runPnpm("Fallow audit", ["exec", "fallow"]) && canValidate;
   } else {
     results.push({ label: "Fallow audit", exitCode: 0, durationSeconds: 0, skipped: true });
     log("\nSKIP  Fallow audit — Fallow is not configured in this repository");
   }
 
-  canValidate = run("Cloudflare production build", pnpm, ["run", "cf:build"]) && canValidate;
+  canValidate = runPnpm("Cloudflare production build", ["run", "cf:build"]) && canValidate;
 
   const postChanges = workingTreeChangesWithoutLog();
   canValidate = record(
