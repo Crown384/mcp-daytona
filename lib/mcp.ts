@@ -2,6 +2,7 @@ import { runCycle } from "./daytona";
 
 const CURRENT_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOL = "2025-11-25";
+const SUPPORTED_PROTOCOLS = [CURRENT_PROTOCOL, LEGACY_PROTOCOL, "2025-06-18", "2025-03-26"] as const;
 const SERVER_INFO = { name: "mcp-daytona", version: "0.1.0" } as const;
 const SERVER_INSTRUCTIONS =
   "Use run_cycle only after code changes are already pushed to GitHub. It creates an isolated Daytona sandbox, checks the selected branch, and never edits implementation source code.";
@@ -126,13 +127,15 @@ function parseRunCycleInput(value: unknown): { repository: string; branch: strin
   return { repository: value.repository, branch, timeoutSeconds };
 }
 
+function supportsProtocol(version: string): boolean {
+  return SUPPORTED_PROTOCOLS.some((supported) => supported === version);
+}
+
 function initializeResult(params: unknown): JsonRecord {
   const requestedVersion = isRecord(params) && typeof params.protocolVersion === "string"
     ? params.protocolVersion
     : LEGACY_PROTOCOL;
-  const protocolVersion = requestedVersion === CURRENT_PROTOCOL || requestedVersion === LEGACY_PROTOCOL
-    ? requestedVersion
-    : LEGACY_PROTOCOL;
+  const protocolVersion = supportsProtocol(requestedVersion) ? requestedVersion : LEGACY_PROTOCOL;
 
   return {
     protocolVersion,
@@ -145,7 +148,7 @@ function initializeResult(params: unknown): JsonRecord {
 function discoveryResult(): JsonRecord {
   return {
     resultType: "complete",
-    supportedVersions: [CURRENT_PROTOCOL, LEGACY_PROTOCOL],
+    supportedVersions: SUPPORTED_PROTOCOLS,
     capabilities: { tools: {} },
     _meta: { "io.modelcontextprotocol/serverInfo": SERVER_INFO },
     instructions: SERVER_INSTRUCTIONS,
