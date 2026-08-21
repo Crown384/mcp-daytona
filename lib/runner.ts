@@ -191,7 +191,7 @@ install_dependencies() {
 
 run_repository_checks() {
   for SCRIPT_NAME in typecheck lint test; do
-    if has_script "$SCRIPT_NAME" ]; then
+    if has_script "$SCRIPT_NAME"; then
       run_script "$SCRIPT_NAME"
     fi
   done
