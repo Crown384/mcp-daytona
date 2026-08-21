@@ -7,6 +7,7 @@ const REPOSITORY = "pamaos-next";
 const BRANCH = "main";
 const SNAPSHOT = "daytona-small";
 const OWNER_PATTERN = /^[A-Za-z0-9_.-]+$/;
+const FETCH_ATTEMPTS = 3;
 
 function requireEnv(name) {
   const value = process.env[name]?.trim();
@@ -23,6 +24,41 @@ function loadRunnerScript() {
   return source.slice(start + marker.length, end);
 }
 
+function sleep(milliseconds) {
+  return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
+}
+
+function describeError(error) {
+  if (!(error instanceof Error)) return String(error);
+  const cause = error.cause;
+  if (!cause || typeof cause !== "object") return error.message;
+  const code = "code" in cause && typeof cause.code === "string" ? cause.code : undefined;
+  const message = "message" in cause && typeof cause.message === "string" ? cause.message : undefined;
+  const detail = [code, message].filter(Boolean).join(": ");
+  return detail ? `${error.message} (${detail})` : error.message;
+}
+
+async function fetchWithRetry(url, init, label) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, init);
+      if (response.status !== 429 && response.status < 500) return response;
+      if (attempt === FETCH_ATTEMPTS) return response;
+      console.log(`${label}: HTTP ${response.status}; retrying (${attempt}/${FETCH_ATTEMPTS})...`);
+    } catch (error) {
+      lastError = error;
+      if (attempt === FETCH_ATTEMPTS) break;
+      console.log(`${label}: ${describeError(error)}; retrying (${attempt}/${FETCH_ATTEMPTS})...`);
+    }
+
+    await sleep(750 * attempt);
+  }
+
+  throw new Error(`${label} network request failed after ${FETCH_ATTEMPTS} attempts: ${describeError(lastError)}`);
+}
+
 const daytonaApiKey = requireEnv("DAYTONA_API_KEY");
 const githubToken = requireEnv("GITHUB_TOKEN");
 const githubOwner = requireEnv("GITHUB_OWNER");
@@ -31,7 +67,7 @@ if (!OWNER_PATTERN.test(githubOwner)) throw new Error("GITHUB_OWNER contains inv
 async function daytona(path, init = {}) {
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${daytonaApiKey}`);
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const response = await fetchWithRetry(`${API_URL}${path}`, { ...init, headers }, `Daytona ${path}`);
   const text = await response.text();
   if (!response.ok) {
     throw new Error(`Daytona ${path} failed (${response.status}): ${text.slice(0, 1200)}`);
@@ -43,7 +79,7 @@ async function waitUntilStarted(sandboxId) {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const sandbox = await daytona(`/sandbox/${encodeURIComponent(sandboxId)}`);
     if (sandbox?.state === "started") return;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await sleep(1000);
   }
   throw new Error(`Sandbox ${sandboxId} did not reach started state within 60 seconds`);
 }
@@ -75,28 +111,32 @@ try {
   await waitUntilStarted(sandboxId);
 
   const encoded = Buffer.from(runnerScript, "utf8").toString("base64");
-  const response = await fetch(`${TOOLBOX_URL}/${encodeURIComponent(sandboxId)}/process/execute`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${daytonaApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      command: `printf '%s' '${encoded}' | base64 -d | bash`,
-      cwd: ".",
-      envs: {
-        GITHUB_TOKEN: githubToken,
-        GITHUB_OWNER: githubOwner,
-        ACTION: "fresh",
-        SYNC_MODE: "reset",
-        REPOSITORY,
-        BRANCH,
-        COMMAND: smokeCommand,
-        WORKING_PATH: ".",
+  const response = await fetchWithRetry(
+    `${TOOLBOX_URL}/${encodeURIComponent(sandboxId)}/process/execute`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${daytonaApiKey}`,
+        "Content-Type": "application/json",
       },
-      timeout: 180,
-    }),
-  });
+      body: JSON.stringify({
+        command: `printf '%s' '${encoded}' | base64 -d | bash`,
+        cwd: ".",
+        envs: {
+          GITHUB_TOKEN: githubToken,
+          GITHUB_OWNER: githubOwner,
+          ACTION: "fresh",
+          SYNC_MODE: "reset",
+          REPOSITORY,
+          BRANCH,
+          COMMAND: smokeCommand,
+          WORKING_PATH: ".",
+        },
+        timeout: 180,
+      }),
+    },
+    "Daytona smoke runner",
+  );
 
   const text = await response.text();
   if (!response.ok) {
@@ -128,14 +168,14 @@ try {
   console.log(`PASS runner cloned ${githubOwner}/${REPOSITORY}@${BRANCH} and executed a root command`);
 } catch (error) {
   failure = error;
-  console.error(error instanceof Error ? error.message : String(error));
+  console.error(describeError(error));
 } finally {
   if (sandboxId) {
     try {
       await daytona(`/sandbox/${encodeURIComponent(sandboxId)}`, { method: "DELETE" });
       console.log(`SANDBOX_DESTROYED=${sandboxId}`);
     } catch (cleanupError) {
-      const message = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+      const message = describeError(cleanupError);
       console.error(`Sandbox cleanup failed: ${message}`);
       failure ??= new Error(`Smoke test cleanup failed: ${message}`);
     }
