@@ -61,6 +61,14 @@ test("arbitrary commands inherit protected Git authentication", () => {
   assert.match(runner, /with_git_auth bash -lc "\$COMMAND"/);
 });
 
+test("runner configures a local Git identity for nested commit scripts", () => {
+  assert.match(runner, /ensure_git_identity\(\)/);
+  assert.match(runner, /git config user\.name/);
+  assert.match(runner, /git config user\.email/);
+  assert.match(runner, /users\.noreply\.github\.com/);
+  assert.match(runner, /ensure_git_identity \|\| exit/);
+});
+
 test("runner validates the selected working directory stays in the repo", () => {
   assert.match(runner, /realpath -e/);
   assert.match(runner, /Working path escapes repository/);
