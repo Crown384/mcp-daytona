@@ -3,18 +3,23 @@ export const RUNNER_SCRIPT = String.raw`set -uo pipefail
 STATUS=0
 REPO_DIR="$HOME/workspace/repo"
 ASKPASS="$HOME/.mcp-daytona-git-askpass"
+TOKEN_FILE="$HOME/.mcp-daytona-git-token"
 REMOTE="https://github.com/$GITHUB_OWNER/$REPOSITORY.git"
 
 cleanup() {
-  rm -f "$ASKPASS"
+  rm -f "$ASKPASS" "$TOKEN_FILE"
 }
 trap cleanup EXIT
+
+printf '%s' "$GITHUB_TOKEN" > "$TOKEN_FILE"
+chmod 600 "$TOKEN_FILE"
+unset GITHUB_TOKEN
 
 cat > "$ASKPASS" <<'EOF'
 #!/bin/sh
 case "$1" in
   *Username*) printf '%s\n' 'x-access-token' ;;
-  *) printf '%s\n' "$GITHUB_TOKEN" ;;
+  *) cat "$HOME/.mcp-daytona-git-token"; printf '\n' ;;
 esac
 EOF
 chmod 700 "$ASKPASS"
@@ -31,6 +36,15 @@ run_step() {
     STATUS="$CODE"
   fi
   return 0
+}
+
+prepare_corepack() {
+  if ! command -v corepack >/dev/null 2>&1; then
+    run_step corepack npm install --global corepack
+  fi
+  if command -v corepack >/dev/null 2>&1; then
+    corepack enable >/dev/null 2>&1 || true
+  fi
 }
 
 has_script() {
@@ -53,6 +67,7 @@ mkdir -p "$(dirname "$REPO_DIR")"
 
 git clone --branch "$BRANCH" --single-branch "$REMOTE" "$REPO_DIR"
 CLONE_CODE=$?
+unset GIT_ASKPASS
 if [ "$CLONE_CODE" -ne 0 ]; then
   exit "$CLONE_CODE"
 fi
@@ -65,11 +80,11 @@ if [ ! -f package.json ]; then
 else
   if [ -f pnpm-lock.yaml ]; then
     PACKAGE_MANAGER=pnpm
-    corepack enable >/dev/null 2>&1 || true
+    prepare_corepack
     run_step install pnpm install --frozen-lockfile
   elif [ -f yarn.lock ]; then
     PACKAGE_MANAGER=yarn
-    corepack enable >/dev/null 2>&1 || true
+    prepare_corepack
     if [ -f .yarnrc.yml ]; then
       run_step install yarn install --immutable
     else
@@ -113,8 +128,10 @@ printf '\n== git status ==\n'
 git status --short
 
 printf '\n== push ==\n'
+export GIT_ASKPASS="$ASKPASS"
 git push origin "HEAD:$BRANCH"
 PUSH_CODE=$?
+unset GIT_ASKPASS
 if [ "$PUSH_CODE" -ne 0 ] && [ "$STATUS" -eq 0 ]; then
   STATUS="$PUSH_CODE"
 fi
