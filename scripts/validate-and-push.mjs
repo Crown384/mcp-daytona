@@ -10,12 +10,7 @@ const results = [];
 
 writeFileSync(
   LOG_FILE,
-  [
-    "MCP Daytona validation",
-    `Started: ${startedAt.toISOString()}`,
-    "=".repeat(88),
-    "",
-  ].join("\n"),
+  ["MCP Daytona validation", `Started: ${startedAt.toISOString()}`, "=".repeat(88), ""].join("\n"),
   "utf8",
 );
 
@@ -24,7 +19,11 @@ function log(text = "") {
   appendFileSync(LOG_FILE, `${text}\n`, "utf8");
 }
 
-function run(label, command, args, options = {}) {
+function consoleOnly(text = "") {
+  process.stdout.write(`${text}\n`);
+}
+
+function run(label, command, args) {
   const stepStarted = performance.now();
   log(`\n${"=".repeat(88)}`);
   log(label.toUpperCase());
@@ -36,7 +35,6 @@ function run(label, command, args, options = {}) {
     encoding: "utf8",
     env: process.env,
     windowsHide: true,
-    ...options,
   });
 
   if (result.stdout) log(result.stdout.trimEnd());
@@ -65,23 +63,34 @@ function gitOutput(args) {
   return result.status === 0 ? result.stdout.trim() : "";
 }
 
+function workingTreeChangesWithoutLog() {
+  return gitOutput(["status", "--porcelain", "--untracked-files=all"])
+    .split("\n")
+    .filter(Boolean)
+    .filter((line) => !line.endsWith(` ${LOG_FILE}`) && !line.endsWith(` \"${LOG_FILE}\"`));
+}
+
 function hasPackageScript(name) {
   const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
   return typeof packageJson.scripts?.[name] === "string";
 }
 
+function printProcessOutput(result) {
+  if (result.stdout) consoleOnly(result.stdout.trimEnd());
+  if (result.stderr) consoleOnly(result.stderr.trimEnd());
+}
+
 function commitAndPushLog(branch, validationPassed) {
   log(`\n${"=".repeat(88)}`);
   log("LOG COMMIT + PUSH");
-  log("-".repeat(88));
+  log("The validation log will now be committed as the only staged path and pushed to the current branch.");
 
   const add = spawnSync("git", ["add", "--", LOG_FILE], {
     cwd: process.cwd(),
     encoding: "utf8",
     windowsHide: true,
   });
-  if (add.stdout) log(add.stdout.trimEnd());
-  if (add.stderr) log(add.stderr.trimEnd());
+  printProcessOutput(add);
   if (add.status !== 0) return false;
 
   const commitMessage = validationPassed
@@ -92,11 +101,9 @@ function commitAndPushLog(branch, validationPassed) {
     encoding: "utf8",
     windowsHide: true,
   });
-  if (commit.stdout) log(commit.stdout.trimEnd());
-  if (commit.stderr) log(commit.stderr.trimEnd());
-
+  printProcessOutput(commit);
   if (commit.status !== 0) {
-    log("Could not commit validation log.");
+    consoleOnly("Could not commit validation log.");
     return false;
   }
 
@@ -105,25 +112,21 @@ function commitAndPushLog(branch, validationPassed) {
     encoding: "utf8",
     windowsHide: true,
   });
-  if (push.stdout) log(push.stdout.trimEnd());
-  if (push.stderr) log(push.stderr.trimEnd());
-  log(`PUSH RESULT: ${push.status === 0 ? "PASS" : "FAIL"} (exit ${push.status ?? 1})`);
+  printProcessOutput(push);
+  consoleOnly(`PUSH RESULT: ${push.status === 0 ? "PASS" : "FAIL"} (exit ${push.status ?? 1})`);
   return push.status === 0;
 }
 
 const branch = gitOutput(["branch", "--show-current"]);
 const head = gitOutput(["rev-parse", "HEAD"]);
-const initialStatus = gitOutput(["status", "--porcelain", "--untracked-files=all"])
-  .split("\n")
-  .filter(Boolean)
-  .filter((line) => !line.endsWith(` ${LOG_FILE}`) && !line.endsWith(` \"${LOG_FILE}\"`));
+const initialChanges = workingTreeChangesWithoutLog();
 
 log("PRE-FLIGHT");
 record("Git head", Boolean(head), head || "unable to resolve HEAD");
 record("Git branch", Boolean(branch), branch || "detached HEAD is not supported");
-record("Git working tree", initialStatus.length === 0, initialStatus.length === 0 ? "clean" : initialStatus.join(" | "));
+record("Git working tree", initialChanges.length === 0, initialChanges.length === 0 ? "clean" : initialChanges.join(" | "));
 
-let canValidate = Boolean(head) && Boolean(branch) && initialStatus.length === 0;
+let canValidate = Boolean(head) && Boolean(branch) && initialChanges.length === 0;
 
 if (canValidate) {
   canValidate = run("Install dependencies", pnpm, ["install", "--frozen-lockfile"]) && canValidate;
@@ -147,6 +150,13 @@ if (canValidate) {
   }
 
   canValidate = run("Cloudflare production build", pnpm, ["run", "cf:build"]) && canValidate;
+
+  const postChanges = workingTreeChangesWithoutLog();
+  canValidate = record(
+    "Post-validation Git diff check",
+    postChanges.length === 0,
+    postChanges.length === 0 ? "only the validation log changed" : postChanges.join(" | "),
+  ) && canValidate;
 }
 
 const completedAt = new Date();
