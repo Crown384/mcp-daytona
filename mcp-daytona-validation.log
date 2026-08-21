@@ -1,8 +1,8 @@
 MCP Daytona validation
-Started: 2026-08-21T08:07:40.472Z
+Started: 2026-08-21T08:14:50.632Z
 ========================================================================================
 PRE-FLIGHT
-PASS  Git head — 0e87bc51eee2d9b53b4b6e02c953e47105d59e71
+PASS  Git head — aff8d47678aeb115cb200b097e498923f34df393
 PASS  Git branch — main
 PASS  Git working tree — clean
 PASS  Runner template sanity check — shell expansion, escaping, and read-only policy look valid
@@ -13,10 +13,10 @@ pnpm install --no-frozen-lockfile --reporter=append-only
 ----------------------------------------------------------------------------------------
 Lockfile is up to date, resolution step is skipped
 Progress: resolved 0, reused 1, downloaded 0, added 0
-Progress: resolved 0, reused 87, downloaded 0, added 0
+Progress: resolved 0, reused 29, downloaded 0, added 0
+Progress: resolved 0, reused 44, downloaded 0, added 0
 Packages: -168
 --------------------------------------------------------------------------------
-Progress: resolved 0, reused 167, downloaded 0, added 0
 Progress: resolved 0, reused 167, downloaded 0, added 0, done
 
 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
@@ -27,9 +27,9 @@ Progress: resolved 0, reused 167, downloaded 0, added 0, done
 │   to run scripts.                                                            │
 │                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-Done in 4.1s using pnpm v10.34.5
+Done in 5.1s using pnpm v10.34.5
 RESULT: PASS (exit 0)
-DURATION: 4.4s
+DURATION: 5.4s
 PASS  Dependency metadata diff check — lockfile already synchronized
 
 ========================================================================================
@@ -41,7 +41,7 @@ pnpm run typecheck
 > tsc --noEmit
 
 RESULT: PASS (exit 0)
-DURATION: 7.2s
+DURATION: 6.1s
 
 ========================================================================================
 LINT
@@ -52,7 +52,7 @@ pnpm run lint
 > eslint .
 
 RESULT: PASS (exit 0)
-DURATION: 8.6s
+DURATION: 5.9s
 
 ========================================================================================
 TESTS
@@ -62,20 +62,20 @@ pnpm run test
 > mcp-daytona@0.2.0 test C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
 > node --test tests/runner.test.mjs
 
-✔ removed repository allowlist cannot regress (1.2771ms)
-✔ Daytona region is not hardcoded (0.218ms)
-✔ runner raw template does not leak escaped shell parameter expansions (0.1366ms)
-✔ runner reads required environment values explicitly (0.9478ms)
-✔ runner exposes arbitrary command execution with root path default (0.4044ms)
-✔ runner validates the selected working directory stays in the repo (0.3124ms)
-✔ MCP schemas expose command and path on fresh and rerun cycles (0.2148ms)
-✔ MCP rejects absolute and parent-traversal paths (0.2569ms)
-✔ runner keeps GitHub token out of repository child processes (0.7252ms)
-✔ runner Git credentials are temporary, cleaned, and use configured owner (0.4577ms)
-✔ runner is read-only and never pushes implementation source (0.2985ms)
-✔ runner rejects dirty working trees caused by execution commands (0.1787ms)
-✔ live smoke test uses exact runner, clones pamaos-next main, runs command, and destroys sandbox (0.1879ms)
-✔ runner Bash syntax is valid when bash is installed (196.5752ms)
+✔ removed repository allowlist cannot regress (2.2333ms)
+✔ Daytona region is not hardcoded (0.2318ms)
+✔ runner raw template does not leak escaped shell parameter expansions (0.1475ms)
+✔ runner reads required environment values explicitly (0.2894ms)
+✔ runner exposes arbitrary command execution with root path default (0.386ms)
+✔ runner validates the selected working directory stays in the repo (0.2859ms)
+✔ MCP schemas expose command and path on fresh and rerun cycles (0.2046ms)
+✔ MCP rejects absolute and parent-traversal paths (0.2289ms)
+✔ runner keeps GitHub token out of repository child processes (0.284ms)
+✔ runner Git credentials are temporary, cleaned, and use configured owner (0.4603ms)
+✔ runner is read-only and never pushes implementation source (0.3186ms)
+✔ runner rejects dirty working trees caused by execution commands (0.1525ms)
+✔ live smoke test uses exact runner, clones pamaos-next main, runs command, and destroys sandbox (0.1916ms)
+✔ runner Bash syntax is valid when bash is installed (188.5233ms)
 ℹ tests 14
 ℹ suites 0
 ℹ pass 14
@@ -83,7 +83,7 @@ pnpm run test
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 395.45
+ℹ duration_ms 378.4963
 RESULT: PASS (exit 0)
 DURATION: 1.2s
 
@@ -92,9 +92,17 @@ DAYTONA LIVE CLONE SMOKE
 node --env-file=.env.local scripts/daytona-smoke.mjs
 ----------------------------------------------------------------------------------------
 Creating Daytona smoke-test sandbox (daytona-small)...
-fetch failed
+SANDBOX_ID=9ba1c7f7-4833-4e7b-a83e-6c249c86a74f
+bash: line 1: set: pipefail: invalid option name
+bash: line 2: $'\r': command not found
+bash: line 12: $'\r': command not found
+bash: line 16: $'\r': command not found
+bash: line 45: syntax error near unexpected token `)'
+bash: line 45: `)'
+Daytona smoke runner failed with exit code 2
+SANDBOX_DESTROYED=9ba1c7f7-4833-4e7b-a83e-6c249c86a74f
 RESULT: FAIL (exit 1)
-DURATION: 12.3s
+DURATION: 8.3s
 
 SKIP  Fallow audit — Fallow is not configured in this repository
 
@@ -130,18 +138,18 @@ workerd compatibility_date: 2026-08-21
 
 ▲ Next.js 16.3.1 (Turbopack)
 - Environments: .env.local, .env
-✓ Running next.config.ts took 412ms
+✓ Running next.config.ts took 60ms
 
   Creating an optimized production build ...
-✓ Compiled successfully in 3.1s
+✓ Compiled successfully in 1194ms
   Running TypeScript ...
-  Finished TypeScript in 5.4s ...
+  Finished TypeScript in 4.9s ...
   Collecting page data using 6 workers ...
   Generating static pages using 6 workers (0/5) ...
   Generating static pages using 6 workers (1/5) 
   Generating static pages using 6 workers (2/5) 
   Generating static pages using 6 workers (3/5) 
-✓ Generating static pages using 6 workers (5/5) in 1547ms
+✓ Generating static pages using 6 workers (5/5) in 1277ms
   Finalizing page optimization ...
 
 Route (app)
@@ -158,13 +166,13 @@ Route (app)
 │ OpenNext — Generating bundle │
 └──────────────────────────────┘
 
-(node:5136) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(node:28028) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 Bundling middleware function...
 Bundling static assets...
 Bundling cache assets...
 Building server function: default...
-Applying code patches: 10.778s
+Applying code patches: 7.257s
 # copyPackageTemplateFiles
 [35m⚙️ Bundling the OpenNext server...
 [0m
@@ -172,7 +180,7 @@ Applying code patches: 10.778s
 [0m
 OpenNext build complete.
 RESULT: PASS (exit 0)
-DURATION: 47.6s
+DURATION: 37.1s
 PASS  Post-validation Git diff check — only the validation log changed
 
 ========================================================================================
@@ -195,8 +203,8 @@ PASSED: 11
 FAILED: 1
 SKIPPED: 1
 RESULT: FAIL (exit 1)
-DURATION: 82.6s
-Completed: 2026-08-21T08:09:03.076Z
+DURATION: 65.2s
+Completed: 2026-08-21T08:15:55.806Z
 Log file: mcp-daytona-validation.log
 
 ========================================================================================
