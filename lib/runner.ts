@@ -1,21 +1,35 @@
 export const RUNNER_SCRIPT = String.raw`set -uo pipefail
 
 STATUS=0
-ACTION="$(printenv ACTION 2>/dev/null)"
-SYNC_MODE="$(printenv SYNC_MODE 2>/dev/null)"
-[ -n "$ACTION" ] || ACTION="fresh"
-[ -n "$SYNC_MODE" ] || SYNC_MODE="reset"
+ACTION="$(printenv ACTION 2>/dev/null || true)"
+SYNC_MODE="$(printenv SYNC_MODE 2>/dev/null || true)"
+GITHUB_OWNER="$(printenv GITHUB_OWNER 2>/dev/null || true)"
+TOKEN_SECRET="$(printenv GITHUB_TOKEN 2>/dev/null || true)"
 REPO_DIR="$HOME/workspace/repo"
 CONTEXT_FILE="$HOME/.mcp-daytona-context"
-TOKEN_SECRET="$GITHUB_TOKEN"
+
+[ -n "$ACTION" ] || ACTION="fresh"
+[ -n "$SYNC_MODE" ] || SYNC_MODE="reset"
+
+if [ -z "$TOKEN_SECRET" ]; then
+  printf 'Missing runner environment variable: GITHUB_TOKEN\n'
+  exit 2
+fi
+if [ -z "$GITHUB_OWNER" ]; then
+  printf 'Missing runner environment variable: GITHUB_OWNER\n'
+  exit 2
+fi
+
 unset GITHUB_TOKEN
 export GIT_TERMINAL_PROMPT=0
 
-with_git_auth() {
-  TOKEN_FILE="$(mktemp)"
-  ASKPASS="$(mktemp)"
-  printf '%s' "$TOKEN_SECRET" > "$TOKEN_FILE"
-  chmod 600 "$TOKEN_FILE"
+with_git_auth() (
+  TOKEN_FILE="$(mktemp)" || exit 1
+  ASKPASS="$(mktemp)" || { rm -f "$TOKEN_FILE"; exit 1; }
+  trap 'rm -f "$ASKPASS" "$TOKEN_FILE"' EXIT
+
+  printf '%s' "$TOKEN_SECRET" > "$TOKEN_FILE" || exit 1
+  chmod 600 "$TOKEN_FILE" || exit 1
   cat > "$ASKPASS" <<EOF
 #!/bin/sh
 case "\$1" in
@@ -23,12 +37,9 @@ case "\$1" in
   *) cat "$TOKEN_FILE"; printf '\n' ;;
 esac
 EOF
-  chmod 700 "$ASKPASS"
+  chmod 700 "$ASKPASS" || exit 1
   GIT_ASKPASS="$ASKPASS" "$@"
-  CODE=$?
-  rm -f "$ASKPASS" "$TOKEN_FILE"
-  return "$CODE"
-}
+)
 
 run_step() {
   LABEL="$1"
@@ -66,6 +77,17 @@ run_script() {
 }
 
 fresh_checkout() {
+  REPOSITORY="$(printenv REPOSITORY 2>/dev/null || true)"
+  BRANCH="$(printenv BRANCH 2>/dev/null || true)"
+  if [ -z "$REPOSITORY" ]; then
+    printf 'Missing runner environment variable: REPOSITORY\n'
+    return 2
+  fi
+  if [ -z "$BRANCH" ]; then
+    printf 'Missing runner environment variable: BRANCH\n'
+    return 2
+  fi
+
   REMOTE="https://github.com/$GITHUB_OWNER/$REPOSITORY.git"
   rm -rf "$REPO_DIR"
   mkdir -p "$(dirname "$REPO_DIR")"
@@ -89,7 +111,15 @@ load_context() {
 }
 
 sync_checkout() {
-  [ "$SYNC_MODE" = "none" ] && return 0
+  case "$SYNC_MODE" in
+    none) return 0 ;;
+    reset) ;;
+    *)
+      printf 'Unsupported sync mode: %s\n' "$SYNC_MODE"
+      return 2
+      ;;
+  esac
+
   cd "$REPO_DIR" || return 1
   printf '\n== sync latest GitHub branch ==\n'
   with_git_auth git fetch origin "$BRANCH" || return $?
@@ -100,24 +130,24 @@ install_dependencies() {
   if [ -f pnpm-lock.yaml ]; then
     PACKAGE_MANAGER=pnpm
     command -v pnpm >/dev/null 2>&1 || prepare_corepack
-    run_step install pnpm install --frozen-lockfile
+    run_step install env CI=true pnpm install --frozen-lockfile
   elif [ -f yarn.lock ]; then
     PACKAGE_MANAGER=yarn
     command -v yarn >/dev/null 2>&1 || prepare_corepack
     if [ -f .yarnrc.yml ]; then
-      run_step install yarn install --immutable
+      run_step install env CI=true yarn install --immutable
     else
-      run_step install yarn install --frozen-lockfile
+      run_step install env CI=true yarn install --frozen-lockfile
     fi
   elif [ -f bun.lock ] || [ -f bun.lockb ]; then
     PACKAGE_MANAGER=bun
-    run_step install bun install --frozen-lockfile
+    run_step install env CI=true bun install --frozen-lockfile
   elif [ -f package-lock.json ]; then
     PACKAGE_MANAGER=npm
-    run_step install npm ci
+    run_step install env CI=true npm ci
   else
     PACKAGE_MANAGER=npm
-    run_step install npm install
+    run_step install env CI=true npm install --package-lock=false
   fi
 }
 
@@ -167,7 +197,16 @@ else
 fi
 
 printf '\n== git status ==\n'
-git status --short
+GIT_STATUS="$(git status --porcelain)"
+if [ -n "$GIT_STATUS" ]; then
+  printf '%s\n' "$GIT_STATUS"
+  printf 'Repository working tree changed during the QA cycle.\n'
+  if [ "$STATUS" -eq 0 ]; then
+    STATUS=3
+  fi
+else
+  printf 'clean\n'
+fi
 
 printf '\n== push checked HEAD ==\n'
 with_git_auth git push origin "HEAD:$BRANCH"
