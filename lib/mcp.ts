@@ -16,12 +16,14 @@ import {
 const CURRENT_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOL = "2025-11-25";
 const SUPPORTED_PROTOCOLS = [CURRENT_PROTOCOL, LEGACY_PROTOCOL, "2025-06-18", "2025-03-26"] as const;
-const SERVER_INFO = { name: "mcp-daytona", version: "0.2.0" } as const;
+const SERVER_INFO = { name: "mcp-daytona", version: "0.3.0" } as const;
 const SERVER_INSTRUCTIONS =
-  "Use GitHub tools for source edits. Use run_cycle for a fresh isolated checkout, or keep the returned sandbox and use rerun_cycle for fast repeated QA. Daytona tools never edit implementation source code directly.";
+  "Use GitHub tools for source edits. run_cycle creates a fresh isolated checkout and rerun_cycle reuses a persistent checkout. Both accept an optional command and repo-relative path; path defaults to the repository root. When command is omitted, the standard QA runner executes.";
 const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+$/;
 const BRANCH_PATTERN = /^[A-Za-z0-9._/-]+$/;
 const SANDBOX_PATTERN = /^[A-Za-z0-9_.-]+$/;
+const MAX_COMMAND_LENGTH = 20_000;
+const MAX_PATH_LENGTH = 512;
 const SNAPSHOTS = [
   "daytona-small",
   "daytona-medium",
@@ -43,16 +45,33 @@ type Tool = Readonly<{
   annotations: JsonRecord;
 }>;
 
+const COMMAND_PROPERTIES = {
+  command: {
+    type: "string",
+    minLength: 1,
+    maxLength: MAX_COMMAND_LENGTH,
+    description: "Optional shell command to run instead of the standard QA pipeline.",
+  },
+  path: {
+    type: "string",
+    minLength: 1,
+    maxLength: MAX_PATH_LENGTH,
+    default: ".",
+    description: "Initial working directory relative to the repository root. Defaults to the root.",
+  },
+} as const;
+
 const RUN_CYCLE_TOOL: Tool = {
   name: "run_cycle",
   title: "Run repository cycle",
   description:
-    "Create a fresh managed Daytona sandbox for an allowed GitHub repo/branch, run the single QA runner, and choose whether to delete, keep running, stop, or pause the sandbox afterward. Use a VM snapshot when after_run is pause.",
+    "Create a fresh managed Daytona sandbox, clone the requested GitHub repo/branch, then either run the supplied shell command from the supplied repo-relative path or run the standard QA pipeline when command is omitted.",
   inputSchema: {
     type: "object",
     properties: {
       repository: { type: "string", description: "Repository name without owner." },
       branch: { type: "string", default: "main", description: "Existing GitHub branch." },
+      ...COMMAND_PROPERTIES,
       timeout_seconds: { type: "integer", minimum: 60, maximum: 3600, default: 1200 },
       after_run: { type: "string", enum: ["delete", "keep", "stop", "pause"], default: "delete" },
       snapshot: { type: "string", enum: [...SNAPSHOTS], default: "daytona-medium" },
@@ -74,11 +93,12 @@ const RERUN_CYCLE_TOOL: Tool = {
   name: "rerun_cycle",
   title: "Rerun persistent sandbox cycle",
   description:
-    "Reuse a managed Daytona sandbox. It starts the sandbox if needed, optionally hard-syncs its checkout to the latest GitHub branch, reruns the same QA runner, and applies the requested lifecycle action afterward.",
+    "Reuse a managed Daytona sandbox, optionally sync its checkout, then either run the supplied shell command from the supplied repo-relative path or run the standard QA pipeline when command is omitted.",
   inputSchema: {
     type: "object",
     properties: {
       sandbox_id: { type: "string" },
+      ...COMMAND_PROPERTIES,
       timeout_seconds: { type: "integer", minimum: 60, maximum: 3600, default: 1200 },
       sync_mode: {
         type: "string",
@@ -243,6 +263,24 @@ function parseSandboxId(args: JsonRecord): string {
   return stringValue(args, "sandbox_id", SANDBOX_PATTERN);
 }
 
+function parseCommand(args: JsonRecord): string | undefined {
+  if (args.command === undefined) return undefined;
+  const command = stringValue(args, "command");
+  if (command.length > MAX_COMMAND_LENGTH) throw new Error(`command exceeds ${MAX_COMMAND_LENGTH} characters`);
+  return command;
+}
+
+function parseWorkingPath(args: JsonRecord): string {
+  if (args.path === undefined) return ".";
+  const path = stringValue(args, "path");
+  if (path.length > MAX_PATH_LENGTH || path.includes("\0")) throw new Error("path is invalid");
+  if (/^(?:\/|\\|[A-Za-z]:)/.test(path)) throw new Error("path must be relative to the repository root");
+  if (path.split(/[\\/]+/).some((segment) => segment === "..")) {
+    throw new Error("path cannot traverse outside the repository");
+  }
+  return path;
+}
+
 function supportsProtocol(version: string): boolean {
   return SUPPORTED_PROTOCOLS.some((supported) => supported === version);
 }
@@ -279,6 +317,8 @@ async function executeTool(name: string, args: JsonRecord): Promise<{ text: stri
     const data = await runCycle({
       repository: stringValue(args, "repository", REPOSITORY_PATTERN),
       branch: parseBranch(args),
+      command: parseCommand(args),
+      workingPath: parseWorkingPath(args),
       timeoutSeconds: integerValue(args, "timeout_seconds", 1200, 60, 3600),
       afterRun,
       snapshot,
@@ -291,6 +331,8 @@ async function executeTool(name: string, args: JsonRecord): Promise<{ text: stri
   if (name === "rerun_cycle") {
     const data = await rerunCycle({
       sandboxId: parseSandboxId(args),
+      command: parseCommand(args),
+      workingPath: parseWorkingPath(args),
       timeoutSeconds: integerValue(args, "timeout_seconds", 1200, 60, 3600),
       syncMode: enumValue<SyncMode>(args, "sync_mode", ["reset", "none"], "reset"),
       afterRun: enumValue<AfterRun>(args, "after_run", ["delete", "keep", "stop", "pause"], "keep"),
