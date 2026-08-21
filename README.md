@@ -6,10 +6,10 @@ Private ChatGPT developer plugin that uses Daytona as an isolated execution/QA m
 
 - One production Cloudflare Worker.
 - One MCP endpoint: `/mcp`.
-- One model-facing tool: `run_cycle`.
 - No generic remote shell tool.
-- GitHub remains the source of truth for code edits.
-- Daytona clones the requested branch, runs one controlled shell script, reports the result, pushes the checked HEAD, and deletes the sandbox.
+- GitHub remains the source of truth for implementation edits.
+- Daytona sandboxes run one controlled runner script.
+- Persistent sandboxes are explicitly labeled and lifecycle tools refuse unrelated Daytona sandboxes.
 
 ## Environment
 
@@ -32,46 +32,74 @@ Cloudflare variables:
 
 ## Deploy
 
-Authenticate Wrangler with your Cloudflare account once, then run:
-
 ```bash
 pnpm install
 pnpm run deploy
 ```
 
-`pnpm run deploy` performs type checking and linting, builds Next.js for Cloudflare with OpenNext, then deploys the single production Worker.
+`pnpm run deploy` type-checks, lints, builds the Next.js Worker with OpenNext, then deploys the single production Worker.
 
 ## Connect the private ChatGPT plugin
-
-Use the production HTTPS endpoint with your private MCP key in the stored URL:
 
 ```text
 https://YOUR-DOMAIN/mcp?key=YOUR_MCP_API_KEY
 ```
 
-The server also accepts `Authorization: Bearer <MCP_API_KEY>` for tools such as MCP Inspector. The query-string form exists because this is a private single-user plugin and ChatGPT does not send an arbitrary custom API-key header to remote MCP servers.
+The server also accepts `Authorization: Bearer <MCP_API_KEY>` for MCP Inspector. Treat the full query-string plugin URL as a secret.
 
-Treat the full plugin URL as a secret.
+## Tools
 
-## `run_cycle`
+### `run_cycle`
 
-Input:
+Creates a fresh managed sandbox and runs the repository cycle.
 
-- `repository` - repository name only; it must be present in `ALLOWED_GITHUB_REPOS`.
+Inputs:
+
+- `repository` - allowed repository name without the GitHub owner.
 - `branch` - existing branch, default `main`.
-- `timeout_seconds` - 60 to 3600 seconds, default 1200.
+- `timeout_seconds` - 60 to 3600, default 1200.
+- `after_run` - `delete`, `keep`, `stop`, or `pause`.
+- `snapshot` - `daytona-small`, `daytona-medium`, `daytona-large`, or the equivalent `daytona-vm-*` sizes.
+- `auto_stop_minutes` - idle timeout; `0` keeps a running sandbox alive indefinitely.
 
-The single runner process:
+`pause` requires a VM snapshot. `delete` creates an ephemeral sandbox. Other lifecycle modes create a persistent sandbox with auto-delete disabled.
 
-1. Creates Git credentials with `GIT_ASKPASS` so the token is not embedded in the Git remote URL.
-2. Clones exactly the requested branch.
-3. Detects npm, pnpm, Yarn, or Bun from the repository lockfile.
-4. Installs dependencies using the lockfile when one exists.
+### `rerun_cycle`
+
+Reuses a persistent sandbox returned by `run_cycle`.
+
+- Starts it automatically when it is stopped or paused.
+- `sync_mode=reset` fetches the saved GitHub branch and hard-resets the checkout to `origin/<branch>` before running.
+- `sync_mode=none` reruns the existing checkout as-is.
+- `after_run` again supports `delete`, `keep`, `stop`, or `pause`.
+
+The sandbox stores only its repository/branch context. GitHub credentials are supplied per runner invocation.
+
+### Sandbox lifecycle tools
+
+- `list_sandboxes` - list only sandboxes labeled as managed by this MCP.
+- `get_sandbox` - inspect one managed sandbox.
+- `manage_sandbox` - `start`, `stop`, `pause`, or `recover`.
+- `configure_sandbox` - change `auto_stop`, `auto_pause`, or `auto_delete` intervals.
+- `destroy_sandbox` - permanently delete a managed sandbox.
+
+All lifecycle tools verify the `managed-by=mcp-daytona` label before acting.
+
+## Single runner script
+
+Every fresh run and rerun invokes the same runner script exactly once. It:
+
+1. Clones the requested branch on a fresh run, or loads the saved checkout on a rerun.
+2. Optionally fetches and hard-resets a persistent checkout to the latest GitHub branch.
+3. Detects npm, pnpm, Yarn, or Bun from the lockfile.
+4. Installs dependencies using the lockfile when available.
 5. Runs configured `typecheck`, `lint`, and `test` scripts.
-6. Runs Fallow when the repository has a `fallow` script or local Fallow binary.
-7. Runs the configured `build` script.
+6. Runs Fallow when configured.
+7. Runs the repository `build` script when configured.
 8. Prints final Git status.
-9. Pushes `HEAD` back to the same branch.
-10. Returns the run log to ChatGPT and deletes the Daytona sandbox.
+9. Pushes the checked `HEAD` back to the same branch.
+10. Returns the log to ChatGPT.
 
-The runner does not create implementation commits or silently stage files produced by tests/builds. Source edits remain the responsibility of the GitHub API workflow.
+The GitHub token is not exported to repository scripts. It is kept as a non-exported shell variable and only materialized into temporary `GIT_ASKPASS` files during Git network operations; those files are deleted immediately afterward.
+
+The runner never stages or commits implementation files. Source changes remain the responsibility of the GitHub API workflow.
