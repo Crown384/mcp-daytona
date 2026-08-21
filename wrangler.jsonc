@@ -1,0 +1,13 @@
+{
+  "name": "mcp-daytona",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-08-21",
+  "keep_vars": true,
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "secrets": {
+    "required": ["DAYTONA_API_KEY", "GITHUB_TOKEN", "MCP_API_KEY"]
+  }
+}
