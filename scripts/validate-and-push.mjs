@@ -4,6 +4,7 @@ import { performance } from "node:perf_hooks";
 
 const LOG_FILE = "mcp-daytona-validation.log";
 const LOCK_FILE = "pnpm-lock.yaml";
+const ENV_FILE = ".env.local";
 const startedAt = new Date();
 const started = performance.now();
 const pnpmCli = process.env.npm_execpath?.trim();
@@ -81,6 +82,11 @@ function record(label, passed, detail) {
   return passed;
 }
 
+function skip(label, detail) {
+  results.push({ label, exitCode: 0, durationSeconds: 0, skipped: true });
+  log(`\nSKIP  ${label} — ${detail}`);
+}
+
 function gitOutput(args) {
   const result = spawnSync("git", args, {
     cwd: process.cwd(),
@@ -119,6 +125,7 @@ function runnerTemplateIssues() {
   if (body.includes("\\\\n")) issues.push("double-escaped newline found inside raw Bash template");
   if (!body.includes('ACTION="$(printenv ACTION')) issues.push("ACTION is not read from the runner environment");
   if (!body.includes('SYNC_MODE="$(printenv SYNC_MODE')) issues.push("SYNC_MODE is not read from the runner environment");
+  if (/git\s+push/.test(body)) issues.push("Daytona QA runner must remain read-only and must not git push");
   return issues;
 }
 
@@ -187,7 +194,7 @@ if (canValidate) {
   canValidate = record(
     "Runner template sanity check",
     runnerIssues.length === 0,
-    runnerIssues.length === 0 ? "shell environment expansion and raw-string escaping look valid" : runnerIssues.join(" | "),
+    runnerIssues.length === 0 ? "shell expansion, escaping, and read-only policy look valid" : runnerIssues.join(" | "),
   ) && canValidate;
 
   canValidate = await runPnpm(
@@ -209,8 +216,22 @@ if (canValidate) {
   if (hasPackageScript("test")) {
     canValidate = await runPnpm("Tests", ["run", "test"]) && canValidate;
   } else {
-    results.push({ label: "Tests", exitCode: 0, durationSeconds: 0, skipped: true });
-    log("\nSKIP  Tests — no test script configured");
+    skip("Tests", "no test script configured");
+  }
+
+  if (canValidate) {
+    if (!existsSync(ENV_FILE)) {
+      canValidate = record("Daytona live clone smoke", false, `${ENV_FILE} is required for the live pre-deploy smoke test`) && canValidate;
+    } else {
+      canValidate = await run(
+        "Daytona live clone smoke",
+        process.execPath,
+        [`--env-file=${ENV_FILE}`, "scripts/daytona-smoke.mjs"],
+        `node --env-file=${ENV_FILE} scripts/daytona-smoke.mjs`,
+      ) && canValidate;
+    }
+  } else {
+    skip("Daytona live clone smoke", "local code checks failed; no sandbox was created");
   }
 
   if (hasPackageScript("fallow")) {
@@ -218,8 +239,7 @@ if (canValidate) {
   } else if (existsSync("node_modules/.bin/fallow") || existsSync("node_modules/.bin/fallow.cmd")) {
     canValidate = await runPnpm("Fallow audit", ["exec", "fallow"]) && canValidate;
   } else {
-    results.push({ label: "Fallow audit", exitCode: 0, durationSeconds: 0, skipped: true });
-    log("\nSKIP  Fallow audit — Fallow is not configured in this repository");
+    skip("Fallow audit", "Fallow is not configured in this repository");
   }
 
   rmSync(".open-next", { recursive: true, force: true });
