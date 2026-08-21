@@ -23,8 +23,9 @@ Cloudflare secrets:
 Cloudflare variables:
 
 - `DAYTONA_API_URL` (normally `https://app.daytona.io/api`)
-- `DAYTONA_TARGET` (normally `us`)
 - `GITHUB_OWNER`
+
+The MCP does not force a Daytona region. Sandbox creation omits the `target` field so Daytona can schedule the sandbox in a region available to the organization.
 
 `wrangler.jsonc` uses `keep_vars: true`, so deployments preserve variables configured in the Cloudflare dashboard.
 
