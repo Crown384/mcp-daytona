@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "check": "pnpm run typecheck && pnpm run lint",
     "cf:build": "pnpm dlx @opennextjs/cloudflare@latest build",
-    "validate:push": "node scripts/validate-and-push.mjs",
+    "validate": "node scripts/validate-and-push.mjs",
     "deploy": "pnpm dlx wrangler@latest deploy"
   },
   "dependencies": {
