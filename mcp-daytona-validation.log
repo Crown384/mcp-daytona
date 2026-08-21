@@ -1,8 +1,8 @@
 MCP Daytona validation
-Started: 2026-08-21T07:24:04.850Z
+Started: 2026-08-21T07:30:02.056Z
 ========================================================================================
 PRE-FLIGHT
-PASS  Git head — 84cab6f37b85042605d35e61daacf9cc86b20198
+PASS  Git head — f0bd1ab3306d244a8796e31b5003ffce391795bf
 PASS  Git branch — main
 PASS  Git working tree — clean
 
@@ -12,11 +12,11 @@ pnpm install --no-frozen-lockfile --reporter=append-only
 ----------------------------------------------------------------------------------------
 Lockfile is up to date, resolution step is skipped
 Progress: resolved 0, reused 1, downloaded 0, added 0
-Progress: resolved 0, reused 13, downloaded 0, added 0
-Progress: resolved 0, reused 52, downloaded 0, added 0
+Progress: resolved 0, reused 15, downloaded 0, added 0
+Progress: resolved 0, reused 56, downloaded 0, added 0
 Packages: -168
 --------------------------------------------------------------------------------
-Progress: resolved 0, reused 166, downloaded 0, added 0, done
+Progress: resolved 0, reused 167, downloaded 0, added 0, done
 
 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
 │                                                                              │
@@ -26,9 +26,9 @@ Progress: resolved 0, reused 166, downloaded 0, added 0, done
 │   to run scripts.                                                            │
 │                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-Done in 5.7s using pnpm v10.34.5
+Done in 5.2s using pnpm v10.34.5
 RESULT: PASS (exit 0)
-DURATION: 9.5s
+DURATION: 5.5s
 PASS  Dependency metadata diff check — lockfile already synchronized
 
 ========================================================================================
@@ -40,7 +40,7 @@ pnpm run typecheck
 > tsc --noEmit
 
 RESULT: PASS (exit 0)
-DURATION: 8.9s
+DURATION: 6.7s
 
 ========================================================================================
 LINT
@@ -51,7 +51,7 @@ pnpm run lint
 > eslint .
 
 RESULT: PASS (exit 0)
-DURATION: 11.5s
+DURATION: 9.5s
 
 SKIP  Tests — no test script configured
 
@@ -89,18 +89,18 @@ workerd compatibility_date: 2026-08-21
 
 ▲ Next.js 16.3.1 (Turbopack)
 - Environments: .env.local, .env
-✓ Running next.config.ts took 362ms
+✓ Running next.config.ts took 74ms
 
   Creating an optimized production build ...
-✓ Compiled successfully in 3.4s
+✓ Compiled successfully in 1355ms
   Running TypeScript ...
-  Finished TypeScript in 7.5s ...
+  Finished TypeScript in 6.2s ...
   Collecting page data using 6 workers ...
   Generating static pages using 6 workers (0/5) ...
   Generating static pages using 6 workers (1/5) 
   Generating static pages using 6 workers (2/5) 
   Generating static pages using 6 workers (3/5) 
-✓ Generating static pages using 6 workers (5/5) in 1587ms
+✓ Generating static pages using 6 workers (5/5) in 1564ms
   Finalizing page optimization ...
 
 Route (app)
@@ -117,13 +117,13 @@ Route (app)
 │ OpenNext — Generating bundle │
 └──────────────────────────────┘
 
-(node:25920) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(node:27976) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 Bundling middleware function...
 Bundling static assets...
 Bundling cache assets...
 Building server function: default...
-Applying code patches: 9.730s
+Applying code patches: 8.862s
 # copyPackageTemplateFiles
 [35m⚙️ Bundling the OpenNext server...
 [0m
@@ -131,7 +131,7 @@ Applying code patches: 9.730s
 [0m
 OpenNext build complete.
 RESULT: PASS (exit 0)
-DURATION: 51.5s
+DURATION: 41.1s
 PASS  Post-validation Git diff check — only the validation log changed
 
 ========================================================================================
@@ -152,8 +152,8 @@ PASSED: 9
 FAILED: 0
 SKIPPED: 2
 RESULT: PASS (exit 0)
-DURATION: 82.8s
-Completed: 2026-08-21T07:25:27.686Z
+DURATION: 63.8s
+Completed: 2026-08-21T07:31:05.864Z
 Log file: mcp-daytona-validation.log
 
 ========================================================================================
