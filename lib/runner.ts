@@ -3,7 +3,7 @@ export const RUNNER_SCRIPT = String.raw`set -uo pipefail
 STATUS=0
 REPO_DIR="$HOME/workspace/repo"
 ASKPASS="$HOME/.mcp-daytona-git-askpass"
-TOKEN_FILE="$HOME/.mcp-daytona-git-token"
+TOKEN_FILE="$(mktemp)"
 REMOTE="https://github.com/$GITHUB_OWNER/$REPOSITORY.git"
 
 cleanup() {
@@ -15,11 +15,11 @@ printf '%s' "$GITHUB_TOKEN" > "$TOKEN_FILE"
 chmod 600 "$TOKEN_FILE"
 unset GITHUB_TOKEN
 
-cat > "$ASKPASS" <<'EOF'
+cat > "$ASKPASS" <<EOF
 #!/bin/sh
-case "$1" in
-  *Username*) printf '%s\n' 'x-access-token' ;;
-  *) cat "$HOME/.mcp-daytona-git-token"; printf '\n' ;;
+case "\$1" in
+  *Username*) printf '%s\\n' 'x-access-token' ;;
+  *) cat "$TOKEN_FILE"; printf '\\n' ;;
 esac
 EOF
 chmod 700 "$ASKPASS"
@@ -80,11 +80,15 @@ if [ ! -f package.json ]; then
 else
   if [ -f pnpm-lock.yaml ]; then
     PACKAGE_MANAGER=pnpm
-    prepare_corepack
+    if ! command -v pnpm >/dev/null 2>&1; then
+      prepare_corepack
+    fi
     run_step install pnpm install --frozen-lockfile
   elif [ -f yarn.lock ]; then
     PACKAGE_MANAGER=yarn
-    prepare_corepack
+    if ! command -v yarn >/dev/null 2>&1; then
+      prepare_corepack
+    fi
     if [ -f .yarnrc.yml ]; then
       run_step install yarn install --immutable
     else
