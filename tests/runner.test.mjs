@@ -14,6 +14,10 @@ const start = runnerSource.indexOf(marker);
 const end = runnerSource.lastIndexOf("`;");
 assert.ok(start >= 0 && end > start, "RUNNER_SCRIPT raw template must exist");
 const runner = runnerSource.slice(start + marker.length, end);
+const executeRunnerStart = daytonaSource.indexOf("async function executeRunner");
+const ensureStartedStart = daytonaSource.indexOf("async function ensureStarted");
+assert.ok(executeRunnerStart >= 0 && ensureStartedStart > executeRunnerStart, "executeRunner function must exist");
+const executeRunnerSource = daytonaSource.slice(executeRunnerStart, ensureStartedStart);
 
 test("removed repository allowlist cannot regress", () => {
   for (const source of [configSource, daytonaSource, runnerSource, mcpSource]) {
@@ -26,6 +30,30 @@ test("Daytona region is not hardcoded", () => {
   assert.equal(configSource.includes("DAYTONA_TARGET"), false);
   assert.equal(configSource.includes("daytonaTarget"), false);
   assert.equal(/\btarget\s*:/.test(daytonaSource), false);
+});
+
+test("production Daytona API retries transient safe requests ten times", () => {
+  assert.match(daytonaSource, /const API_RETRY_ATTEMPTS = 10/);
+  assert.match(daytonaSource, /function isRetryableStatus/);
+  assert.match(daytonaSource, /status === 429 \|\| status >= 500/);
+  assert.match(daytonaSource, /retry-after-sandbox-create/);
+  assert.match(daytonaSource, /\["GET", "HEAD", "PUT", "DELETE"\]/);
+  assert.match(daytonaSource, /async function fetchWithRetry/);
+});
+
+test("sandbox creation uses one recoverable name across retries", () => {
+  assert.match(daytonaSource, /function newSandboxName/);
+  assert.match(daytonaSource, /crypto\.randomUUID\(\)/);
+  assert.match(daytonaSource, /async function tryRecoverSandbox/);
+  assert.match(daytonaSource, /async function createSandboxRequest/);
+  assert.match(daytonaSource, /name,\s*\n\s*snapshot:/);
+  assert.match(daytonaSource, /createSandboxRequest\(input, newSandboxName\(\)\)/);
+});
+
+test("arbitrary command execution is single-shot and never automatically retried", () => {
+  assert.equal(executeRunnerSource.includes("fetchWithRetry"), false);
+  assert.match(executeRunnerSource, /await fetch\(/);
+  assert.match(executeRunnerSource, /was not retried because the command may already have started/);
 });
 
 test("runner raw template does not leak escaped shell parameter expansions", () => {
