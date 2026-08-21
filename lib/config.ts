@@ -7,7 +7,6 @@ export type AppConfig = Readonly<{
   githubToken: string;
   githubOwner: string;
   allowedRepositories: ReadonlySet<string>;
-  mcpApiKey: string;
 }>;
 
 function requireEnv(name: string): string {
@@ -35,14 +34,9 @@ function parseRepositories(value: string): ReadonlySet<string> {
 
 export function getConfig(): AppConfig {
   const githubOwner = requireEnv("GITHUB_OWNER");
-  const mcpApiKey = requireEnv("MCP_API_KEY");
 
   if (!OWNER_PATTERN.test(githubOwner)) {
     throw new Error("GITHUB_OWNER contains invalid characters");
-  }
-
-  if (mcpApiKey.length < 24) {
-    throw new Error("MCP_API_KEY must be at least 24 characters");
   }
 
   return {
@@ -52,7 +46,6 @@ export function getConfig(): AppConfig {
     githubToken: requireEnv("GITHUB_TOKEN"),
     githubOwner,
     allowedRepositories: parseRepositories(requireEnv("ALLOWED_GITHUB_REPOS")),
-    mcpApiKey,
   };
 }
 
