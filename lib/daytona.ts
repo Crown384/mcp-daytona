@@ -5,6 +5,8 @@ const DAYTONA_TOOLBOX_URL = "https://proxy.app.daytona.io/toolbox";
 const MAX_LOG_CHARS = 40_000;
 const MANAGED_BY_KEY = "managed-by";
 const MANAGED_BY_VALUE = "mcp-daytona";
+const API_RETRY_ATTEMPTS = 10;
+const RETRY_BASE_DELAY_MS = 750;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -56,14 +58,68 @@ function isRecord(value: unknown): value is JsonRecord {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  if (!(error instanceof Error)) return String(error);
+  const cause = error.cause;
+  if (!cause || typeof cause !== "object") return error.message;
+  const code = "code" in cause && typeof cause.code === "string" ? cause.code : undefined;
+  const message = "message" in cause && typeof cause.message === "string" ? cause.message : undefined;
+  const detail = [code, message].filter(Boolean).join(": ");
+  return detail ? `${error.message} (${detail})` : error.message;
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+function requestMethod(init: RequestInit): string {
+  return (init.method ?? "GET").toUpperCase();
+}
+
+function isSafeRequestToRetry(init: RequestInit): boolean {
+  return ["GET", "HEAD", "PUT", "DELETE"].includes(requestMethod(init));
+}
+
+function retryDelayMs(response: Response | undefined, attempt: number): number {
+  const raw = response?.headers.get("retry-after-sandbox-create") ?? response?.headers.get("retry-after");
+  const seconds = raw === null ? Number.NaN : Number(raw);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.max(250, seconds * 1_000);
+  return RETRY_BASE_DELAY_MS * attempt;
+}
+
+async function fetchWithRetry(url: string, init: RequestInit, label: string, allowRetry: boolean): Promise<Response> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= API_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, init);
+      if (!allowRetry || !isRetryableStatus(response.status) || attempt === API_RETRY_ATTEMPTS) return response;
+      await sleep(retryDelayMs(response, attempt));
+    } catch (error) {
+      lastError = error;
+      if (!allowRetry || attempt === API_RETRY_ATTEMPTS) {
+        throw new Error(`${label} network request failed${allowRetry ? ` after ${attempt} attempts` : ""}: ${errorMessage(error)}`);
+      }
+      await sleep(retryDelayMs(undefined, attempt));
+    }
+  }
+
+  throw new Error(`${label} network request failed after ${API_RETRY_ATTEMPTS} attempts: ${errorMessage(lastError)}`);
 }
 
 async function request(path: string, init: RequestInit = {}): Promise<Response> {
   const config = getConfig();
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${config.daytonaApiKey}`);
-  const response = await fetch(`${config.daytonaApiUrl}${path}`, { ...init, headers });
+  const response = await fetchWithRetry(
+    `${config.daytonaApiUrl}${path}`,
+    { ...init, headers },
+    `Daytona request ${path}`,
+    isSafeRequestToRetry(init),
+  );
 
   if (!response.ok) {
     const text = await response.text();
@@ -120,18 +176,64 @@ async function labelSandbox(sandboxId: string, repository: string, branch: strin
   });
 }
 
-async function createSandbox(input: RunCycleInput): Promise<string> {
-  const value = await requestJson("/sandbox", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      snapshot: input.snapshot,
-      ephemeral: input.afterRun === "delete",
-      autoStopInterval: input.autoStopMinutes,
-      ...(input.afterRun === "delete" ? {} : { autoDeleteInterval: -1 }),
-    }),
-  });
+function newSandboxName(): string {
+  return `mcp-daytona-${Date.now().toString(36)}-${crypto.randomUUID().slice(0, 8)}`;
+}
 
+async function tryRecoverSandbox(name: string): Promise<unknown | undefined> {
+  try {
+    return await requestJson(`/sandbox/${encodeURIComponent(name)}`);
+  } catch {
+    return undefined;
+  }
+}
+
+async function createSandboxRequest(input: RunCycleInput, name: string): Promise<unknown> {
+  const config = getConfig();
+  const url = `${config.daytonaApiUrl}/sandbox`;
+  const body = JSON.stringify({
+    name,
+    snapshot: input.snapshot,
+    ephemeral: input.afterRun === "delete",
+    autoStopInterval: input.autoStopMinutes,
+    ...(input.afterRun === "delete" ? {} : { autoDeleteInterval: -1 }),
+  });
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= API_RETRY_ATTEMPTS; attempt += 1) {
+    let response: Response | undefined;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${config.daytonaApiKey}`, "Content-Type": "application/json" },
+        body,
+      });
+
+      if (response.ok) {
+        const text = await response.text();
+        return text ? JSON.parse(text) : {};
+      }
+
+      const text = await response.text();
+      lastError = new Error(`Daytona sandbox creation failed (${response.status}): ${text.slice(0, 1_000)}`);
+      const recovered = await tryRecoverSandbox(name);
+      if (recovered) return recovered;
+      if (!isRetryableStatus(response.status)) throw lastError;
+    } catch (error) {
+      lastError = error;
+      const recovered = await tryRecoverSandbox(name);
+      if (recovered) return recovered;
+      if (attempt === API_RETRY_ATTEMPTS) break;
+    }
+
+    if (attempt < API_RETRY_ATTEMPTS) await sleep(retryDelayMs(response, attempt));
+  }
+
+  throw new Error(`Daytona sandbox creation failed after ${API_RETRY_ATTEMPTS} attempts: ${errorMessage(lastError)}`);
+}
+
+async function createSandbox(input: RunCycleInput): Promise<string> {
+  const value = await createSandboxRequest(input, newSandboxName());
   if (!isRecord(value) || typeof value.id !== "string" || !value.id) {
     throw new Error("Daytona sandbox creation response did not include an id");
   }
@@ -168,11 +270,17 @@ async function executeRunner(
   if (branch) envs.BRANCH = branch;
   if (command) envs.COMMAND = command;
 
-  const response = await fetch(`${DAYTONA_TOOLBOX_URL}/${encodeURIComponent(sandboxId)}/process/execute`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${config.daytonaApiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ command: `printf '%s' '${encodedScript}' | base64 -d | bash`, cwd: ".", envs, timeout: timeoutSeconds }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${DAYTONA_TOOLBOX_URL}/${encodeURIComponent(sandboxId)}/process/execute`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${config.daytonaApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ command: `printf '%s' '${encodedScript}' | base64 -d | bash`, cwd: ".", envs, timeout: timeoutSeconds }),
+    });
+  } catch (error) {
+    throw new Error(`Daytona runner network request failed and was not retried because the command may already have started: ${errorMessage(error)}`);
+  }
+
   const text = await response.text();
   if (!response.ok) throw new Error(`Daytona runner execution failed (${response.status}): ${text.slice(0, 1_000)}`);
 
@@ -181,10 +289,6 @@ async function executeRunner(
     throw new Error("Daytona runner response was missing exitCode or result");
   }
   return { exitCode: value.exitCode, log: truncateLog(value.result) };
-}
-
-function sleep(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 async function ensureStarted(sandboxId: string, sandbox: unknown): Promise<void> {
