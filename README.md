@@ -19,7 +19,6 @@ Cloudflare secrets:
 
 - `DAYTONA_API_KEY`
 - `GITHUB_TOKEN`
-- `MCP_API_KEY`
 
 Cloudflare variables:
 
@@ -35,7 +34,7 @@ Cloudflare variables:
 After pulling the latest branch, run one command:
 
 ```bash
-pnpm run validate:push
+pnpm run validate
 ```
 
 That single script:
@@ -63,11 +62,15 @@ pnpm run deploy
 
 ## Connect the private ChatGPT plugin
 
+Use the production MCP endpoint:
+
 ```text
-https://YOUR-DOMAIN/mcp?key=YOUR_MCP_API_KEY
+https://YOUR-DOMAIN/mcp
 ```
 
-The server also accepts `Authorization: Bearer <MCP_API_KEY>` for MCP Inspector. Treat the full query-string plugin URL as a secret.
+No custom `MCP_API_KEY` layer is implemented. Configure the private ChatGPT app/plugin with no additional MCP authentication.
+
+Because the Worker endpoint itself is internet-reachable, private ChatGPT visibility is not network-level access control. The repository allowlist, strict tool schemas, sandbox isolation, and removal of GitHub credentials from repository processes remain important safety boundaries. If broader access is ever needed, add proper MCP authentication rather than a custom query-string key.
 
 ## Tools
 
