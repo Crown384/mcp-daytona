@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Daytona MCP
 
-## Getting Started
+Private ChatGPT developer plugin that uses Daytona as an isolated execution/QA machine for GitHub repositories.
 
-First, run the development server:
+## Design
+
+- One production Cloudflare Worker.
+- One MCP endpoint: `/mcp`.
+- One model-facing tool: `run_cycle`.
+- No generic remote shell tool.
+- GitHub remains the source of truth for code edits.
+- Daytona clones the requested branch, runs one controlled shell script, reports the result, pushes the checked HEAD, and deletes the sandbox.
+
+## Environment
+
+Copy `.env.example` to `.env` for local Next.js work.
+
+Cloudflare secrets:
+
+- `DAYTONA_API_KEY`
+- `GITHUB_TOKEN`
+- `MCP_API_KEY`
+
+Cloudflare variables:
+
+- `DAYTONA_API_URL` (normally `https://app.daytona.io/api`)
+- `DAYTONA_TARGET` (normally `us`)
+- `GITHUB_OWNER`
+- `ALLOWED_GITHUB_REPOS` (comma-separated repository names)
+
+`wrangler.jsonc` uses `keep_vars: true`, so deployments preserve variables configured in the Cloudflare dashboard.
+
+## Deploy
+
+Authenticate Wrangler with your Cloudflare account once, then run:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm run deploy
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`pnpm run deploy` performs type checking and linting, builds Next.js for Cloudflare with OpenNext, then deploys the single production Worker.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Connect the private ChatGPT plugin
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Use the production HTTPS endpoint with your private MCP key in the stored URL:
 
-## Learn More
+```text
+https://YOUR-DOMAIN/mcp?key=YOUR_MCP_API_KEY
+```
 
-To learn more about Next.js, take a look at the following resources:
+The server also accepts `Authorization: Bearer <MCP_API_KEY>` for tools such as MCP Inspector. The query-string form exists because this is a private single-user plugin and ChatGPT does not send an arbitrary custom API-key header to remote MCP servers.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Treat the full plugin URL as a secret.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## `run_cycle`
 
-## Deploy on Vercel
+Input:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `repository` - repository name only; it must be present in `ALLOWED_GITHUB_REPOS`.
+- `branch` - existing branch, default `main`.
+- `timeout_seconds` - 60 to 3600 seconds, default 1200.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The single runner process:
+
+1. Creates Git credentials with `GIT_ASKPASS` so the token is not embedded in the Git remote URL.
+2. Clones exactly the requested branch.
+3. Detects npm, pnpm, Yarn, or Bun from the repository lockfile.
+4. Installs dependencies using the lockfile when one exists.
+5. Runs configured `typecheck`, `lint`, and `test` scripts.
+6. Runs Fallow when the repository has a `fallow` script or local Fallow binary.
+7. Runs the configured `build` script.
+8. Prints final Git status.
+9. Pushes `HEAD` back to the same branch.
+10. Returns the run log to ChatGPT and deletes the Daytona sandbox.
+
+The runner does not create implementation commits or silently stage files produced by tests/builds. Source edits remain the responsibility of the GitHub API workflow.
