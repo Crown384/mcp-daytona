@@ -1,0 +1,65 @@
+MCP Daytona validation
+Started: 2026-08-21T03:13:07.477Z
+========================================================================================
+PRE-FLIGHT
+PASS  Git head — cdebfa9d692d793fee75a3cbd86581246803169a
+PASS  Git branch — main
+PASS  Git working tree — clean
+
+========================================================================================
+INSTALL DEPENDENCIES
+pnpm.cmd install --frozen-lockfile
+----------------------------------------------------------------------------------------
+RESULT: FAIL (exit 1)
+DURATION: 0.0s
+
+========================================================================================
+TYPECHECK
+pnpm.cmd run typecheck
+----------------------------------------------------------------------------------------
+RESULT: FAIL (exit 1)
+DURATION: 0.0s
+
+========================================================================================
+LINT
+pnpm.cmd run lint
+----------------------------------------------------------------------------------------
+RESULT: FAIL (exit 1)
+DURATION: 0.0s
+
+SKIP  Tests — no test script configured
+
+SKIP  Fallow audit — Fallow is not configured in this repository
+
+========================================================================================
+CLOUDFLARE PRODUCTION BUILD
+pnpm.cmd run cf:build
+----------------------------------------------------------------------------------------
+RESULT: FAIL (exit 1)
+DURATION: 0.0s
+PASS  Post-validation Git diff check — only the validation log changed
+
+========================================================================================
+FINAL SUMMARY
+PASS  Git head
+PASS  Git branch
+PASS  Git working tree
+FAIL  Install dependencies
+FAIL  Typecheck
+FAIL  Lint
+SKIP  Tests
+SKIP  Fallow audit
+FAIL  Cloudflare production build
+PASS  Post-validation Git diff check
+TOTAL: 10
+PASSED: 4
+FAILED: 4
+SKIPPED: 2
+RESULT: FAIL (exit 1)
+DURATION: 0.3s
+Completed: 2026-08-21T03:13:07.769Z
+Log file: mcp-daytona-validation.log
+
+========================================================================================
+LOG COMMIT + PUSH
+The validation log will now be committed as the only staged path and pushed to the current branch.
