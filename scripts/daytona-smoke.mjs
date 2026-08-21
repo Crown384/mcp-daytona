@@ -7,7 +7,7 @@ const REPOSITORY = "pamaos-next";
 const BRANCH = "main";
 const SNAPSHOT = "daytona-small";
 const OWNER_PATTERN = /^[A-Za-z0-9_.-]+$/;
-const FETCH_ATTEMPTS = 3;
+const FETCH_ATTEMPTS = 10;
 
 function requireEnv(name) {
   const value = process.env[name]?.trim();
@@ -21,7 +21,7 @@ function loadRunnerScript() {
   const start = source.indexOf(marker);
   const end = source.lastIndexOf("`;");
   if (start < 0 || end <= start) throw new Error("RUNNER_SCRIPT String.raw template could not be located");
-  return source.slice(start + marker.length, end);
+  return source.slice(start + marker.length, end).replace(/\r\n?/g, "\n");
 }
 
 function sleep(milliseconds) {
