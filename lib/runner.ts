@@ -191,7 +191,7 @@ install_dependencies() {
 
 run_repository_checks() {
   for SCRIPT_NAME in typecheck lint test; do
-    if has_script "$SCRIPT_NAME"; then
+    if has_script "$SCRIPT_NAME" ]; then
       run_script "$SCRIPT_NAME"
     fi
   done
@@ -241,9 +241,13 @@ printf '\n== git status ==\n'
 GIT_STATUS="$(git status --porcelain)"
 if [ -n "$GIT_STATUS" ]; then
   printf '%s\n' "$GIT_STATUS"
-  printf 'Repository working tree changed during the execution cycle.\n'
-  if [ "$STATUS" -eq 0 ]; then
-    STATUS=3
+  if [ -z "$COMMAND" ]; then
+    printf 'Repository working tree changed during the automatic QA cycle.\n'
+    if [ "$STATUS" -eq 0 ]; then
+      STATUS=3
+    fi
+  else
+    printf 'Repository working tree contains changes from the custom command.\n'
   fi
 else
   printf 'clean\n'
