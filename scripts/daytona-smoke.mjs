@@ -46,8 +46,8 @@ const smokeScript = [
   'chmod 600 "$TOKEN_FILE"',
   'cat > "$ASKPASS" <<EOF',
   "#!/bin/sh",
-  'case "$1" in',
-  "  *Username*) printf '%s\\n' 'x-access-token' ;;",
+  'case "\\$1" in',
+  "  *Username*) printf '%s\n' 'x-access-token' ;;",
   '  *) cat "$TOKEN_FILE"; printf "\\n" ;;',
   "esac",
   "EOF",
@@ -115,6 +115,9 @@ try {
 
   if (!result.result.includes("CLONED_HEAD=")) {
     throw new Error("Daytona smoke clone did not report a checked-out commit");
+  }
+  if (!result.result.includes(`CLONED_BRANCH=${BRANCH}`)) {
+    throw new Error(`Daytona smoke clone did not checkout ${BRANCH}`);
   }
 
   console.log(`PASS cloned ${githubOwner}/${REPOSITORY}@${BRANCH}`);
