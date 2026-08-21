@@ -3,6 +3,7 @@
   "name": "mcp-daytona",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-08-21",
+  "compatibility_flags": ["nodejs_compat"],
   "keep_vars": true,
   "assets": {
     "directory": ".open-next/assets",
