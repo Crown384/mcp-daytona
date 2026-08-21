@@ -3,7 +3,6 @@ const OWNER_PATTERN = /^[A-Za-z0-9_.-]+$/;
 export type AppConfig = Readonly<{
   daytonaApiKey: string;
   daytonaApiUrl: string;
-  daytonaTarget: string;
   githubToken: string;
   githubOwner: string;
 }>;
@@ -28,7 +27,6 @@ export function getConfig(): AppConfig {
   return {
     daytonaApiKey: requireEnv("DAYTONA_API_KEY"),
     daytonaApiUrl: (process.env.DAYTONA_API_URL?.trim() || "https://app.daytona.io/api").replace(/\/$/, ""),
-    daytonaTarget: process.env.DAYTONA_TARGET?.trim() || "us",
     githubToken: requireEnv("GITHUB_TOKEN"),
     githubOwner,
   };
