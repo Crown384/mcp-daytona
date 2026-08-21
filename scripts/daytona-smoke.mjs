@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 const API_URL = (process.env.DAYTONA_API_URL?.trim() || "https://app.daytona.io/api").replace(/\/$/, "");
 const TOOLBOX_URL = "https://proxy.app.daytona.io/toolbox";
 const REPOSITORY = "pamaos-next";
@@ -9,6 +12,15 @@ function requireEnv(name) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`Missing required environment variable: ${name}`);
   return value;
+}
+
+function loadRunnerScript() {
+  const source = readFileSync(resolve("lib/runner.ts"), "utf8");
+  const marker = "String.raw`";
+  const start = source.indexOf(marker);
+  const end = source.lastIndexOf("`;");
+  if (start < 0 || end <= start) throw new Error("RUNNER_SCRIPT String.raw template could not be located");
+  return source.slice(start + marker.length, end);
 }
 
 const daytonaApiKey = requireEnv("DAYTONA_API_KEY");
@@ -36,30 +48,12 @@ async function waitUntilStarted(sandboxId) {
   throw new Error(`Sandbox ${sandboxId} did not reach started state within 60 seconds`);
 }
 
-const smokeScript = [
-  "set -euo pipefail",
-  'TOKEN_SECRET="$GITHUB_TOKEN"',
-  "unset GITHUB_TOKEN",
-  "export GIT_TERMINAL_PROMPT=0",
-  'TOKEN_FILE="$(mktemp)"',
-  'ASKPASS="$(mktemp)"',
-  "trap 'rm -f \"$ASKPASS\" \"$TOKEN_FILE\"' EXIT",
-  'printf "%s" "$TOKEN_SECRET" > "$TOKEN_FILE"',
-  'chmod 600 "$TOKEN_FILE"',
-  'cat > "$ASKPASS" <<EOF',
-  "#!/bin/sh",
-  'case "\\$1" in',
-  `  *Username*) printf '%s\\n' '${githubOwner}' ;;`,
-  '  *) cat "$TOKEN_FILE"; printf "\\n" ;;',
-  "esac",
-  "EOF",
-  'chmod 700 "$ASKPASS"',
-  'rm -rf "$HOME/pamaos-next-smoke"',
-  'GIT_ASKPASS="$ASKPASS" git clone --branch "$BRANCH" --single-branch "https://github.com/$GITHUB_OWNER/$REPOSITORY.git" "$HOME/pamaos-next-smoke"',
-  'cd "$HOME/pamaos-next-smoke"',
-  'printf "CLONED_HEAD=%s\\n" "$(git rev-parse HEAD)"',
-  'printf "CLONED_BRANCH=%s\\n" "$(git branch --show-current)"',
-].join("\n");
+const runnerScript = loadRunnerScript();
+const smokeCommand = [
+  "printf 'SMOKE_PWD=%s\\n' \"$PWD\"",
+  "printf 'SMOKE_BRANCH=%s\\n' \"$(git branch --show-current)\"",
+  "printf 'SMOKE_HEAD=%s\\n' \"$(git rev-parse HEAD)\"",
+].join("; ");
 
 let sandboxId;
 let failure;
@@ -80,7 +74,7 @@ try {
   console.log(`SANDBOX_ID=${sandboxId}`);
   await waitUntilStarted(sandboxId);
 
-  const encoded = Buffer.from(smokeScript, "utf8").toString("base64");
+  const encoded = Buffer.from(runnerScript, "utf8").toString("base64");
   const response = await fetch(`${TOOLBOX_URL}/${encodeURIComponent(sandboxId)}/process/execute`, {
     method: "POST",
     headers: {
@@ -93,8 +87,12 @@ try {
       envs: {
         GITHUB_TOKEN: githubToken,
         GITHUB_OWNER: githubOwner,
+        ACTION: "fresh",
+        SYNC_MODE: "reset",
         REPOSITORY,
         BRANCH,
+        COMMAND: smokeCommand,
+        WORKING_PATH: ".",
       },
       timeout: 180,
     }),
@@ -112,17 +110,22 @@ try {
 
   process.stdout.write(result.result.endsWith("\n") ? result.result : `${result.result}\n`);
   if (result.exitCode !== 0) {
-    throw new Error(`Daytona smoke clone failed with exit code ${result.exitCode}`);
+    throw new Error(`Daytona smoke runner failed with exit code ${result.exitCode}`);
+  }
+  if (!result.result.includes("== custom command ==")) {
+    throw new Error("Daytona smoke did not execute the custom-command path");
+  }
+  if (!result.result.includes("path=.")) {
+    throw new Error("Daytona smoke did not default the working path to repository root");
+  }
+  if (!result.result.includes(`SMOKE_BRANCH=${BRANCH}`)) {
+    throw new Error(`Daytona smoke did not checkout ${BRANCH}`);
+  }
+  if (!result.result.includes("SMOKE_HEAD=")) {
+    throw new Error("Daytona smoke command did not report the checked-out commit");
   }
 
-  if (!result.result.includes("CLONED_HEAD=")) {
-    throw new Error("Daytona smoke clone did not report a checked-out commit");
-  }
-  if (!result.result.includes(`CLONED_BRANCH=${BRANCH}`)) {
-    throw new Error(`Daytona smoke clone did not checkout ${BRANCH}`);
-  }
-
-  console.log(`PASS cloned ${githubOwner}/${REPOSITORY}@${BRANCH}`);
+  console.log(`PASS runner cloned ${githubOwner}/${REPOSITORY}@${BRANCH} and executed a root command`);
 } catch (error) {
   failure = error;
   console.error(error instanceof Error ? error.message : String(error));
