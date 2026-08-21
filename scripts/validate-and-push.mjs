@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { performance } from "node:perf_hooks";
 
 const LOG_FILE = "mcp-daytona-validation.log";
+const LOCK_FILE = "pnpm-lock.yaml";
 const startedAt = new Date();
 const started = performance.now();
 const pnpmCli = process.env.npm_execpath?.trim();
@@ -79,6 +80,10 @@ function workingTreeChangesWithoutLog() {
     .filter((line) => !line.endsWith(` ${LOG_FILE}`) && !line.endsWith(` \"${LOG_FILE}\"`));
 }
 
+function isOnlyLockfileChange(changes) {
+  return changes.every((line) => line.endsWith(` ${LOCK_FILE}`) || line.endsWith(` \"${LOCK_FILE}\"`));
+}
+
 function hasPackageScript(name) {
   const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
   return typeof packageJson.scripts?.[name] === "string";
@@ -90,12 +95,15 @@ function printProcessOutput(result) {
   if (result.error) consoleOnly(`PROCESS ERROR: ${result.error.message}`);
 }
 
-function commitAndPushLog(branch, validationPassed) {
+function commitAndPushArtifacts(branch, validationPassed, includeLockfile) {
   log(`\n${"=".repeat(88)}`);
-  log("LOG COMMIT + PUSH");
-  log("The validation log will now be committed as the only staged path and pushed to the current branch.");
+  log("VALIDATION ARTIFACT COMMIT + PUSH");
+  log(includeLockfile
+    ? "The validation log and generated pnpm lockfile will be committed and pushed."
+    : "The validation log will be committed and pushed.");
 
-  const add = spawnSync("git", ["add", "--", LOG_FILE], {
+  const paths = includeLockfile ? [LOG_FILE, LOCK_FILE] : [LOG_FILE];
+  const add = spawnSync("git", ["add", "--", ...paths], {
     cwd: process.cwd(),
     encoding: "utf8",
     windowsHide: true,
@@ -103,17 +111,19 @@ function commitAndPushLog(branch, validationPassed) {
   printProcessOutput(add);
   if (add.status !== 0) return false;
 
-  const commitMessage = validationPassed
-    ? "chore: record passing mcp-daytona validation"
-    : "chore: record failing mcp-daytona validation";
-  const commit = spawnSync("git", ["commit", "--only", LOG_FILE, "-m", commitMessage], {
+  const commitMessage = includeLockfile
+    ? "chore: sync dependencies and record mcp-daytona validation"
+    : validationPassed
+      ? "chore: record passing mcp-daytona validation"
+      : "chore: record failing mcp-daytona validation";
+  const commit = spawnSync("git", ["commit", "--only", ...paths, "-m", commitMessage], {
     cwd: process.cwd(),
     encoding: "utf8",
     windowsHide: true,
   });
   printProcessOutput(commit);
   if (commit.status !== 0) {
-    consoleOnly("Could not commit validation log.");
+    consoleOnly("Could not commit validation artifacts.");
     return false;
   }
 
@@ -137,9 +147,18 @@ record("Git branch", Boolean(branch), branch || "detached HEAD is not supported"
 record("Git working tree", initialChanges.length === 0, initialChanges.length === 0 ? "clean" : initialChanges.join(" | "));
 
 let canValidate = Boolean(head) && Boolean(branch) && initialChanges.length === 0;
+let lockfileChanged = false;
 
 if (canValidate) {
-  canValidate = runPnpm("Install dependencies", ["install", "--frozen-lockfile"]) && canValidate;
+  canValidate = runPnpm("Install dependencies", ["install", "--no-frozen-lockfile"]) && canValidate;
+  const installChanges = workingTreeChangesWithoutLog();
+  lockfileChanged = installChanges.some((line) => line.endsWith(` ${LOCK_FILE}`) || line.endsWith(` \"${LOCK_FILE}\"`));
+  canValidate = record(
+    "Dependency metadata diff check",
+    isOnlyLockfileChange(installChanges),
+    installChanges.length === 0 ? "lockfile already synchronized" : installChanges.join(" | "),
+  ) && canValidate;
+
   canValidate = runPnpm("Typecheck", ["run", "typecheck"]) && canValidate;
   canValidate = runPnpm("Lint", ["run", "lint"]) && canValidate;
 
@@ -164,7 +183,7 @@ if (canValidate) {
   const postChanges = workingTreeChangesWithoutLog();
   canValidate = record(
     "Post-validation Git diff check",
-    postChanges.length === 0,
+    isOnlyLockfileChange(postChanges),
     postChanges.length === 0 ? "only the validation log changed" : postChanges.join(" | "),
   ) && canValidate;
 }
@@ -192,9 +211,9 @@ log(`Completed: ${completedAt.toISOString()}`);
 log(`Log file: ${LOG_FILE}`);
 
 if (!branch) {
-  log("\nLog was not pushed because the repository is on a detached HEAD.");
+  log("\nValidation artifacts were not pushed because the repository is on a detached HEAD.");
   process.exit(1);
 }
 
-const pushed = commitAndPushLog(branch, validationPassed);
+const pushed = commitAndPushArtifacts(branch, validationPassed, lockfileChanged);
 process.exit(validationPassed && pushed ? 0 : 1);
