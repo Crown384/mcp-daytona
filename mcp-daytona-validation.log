@@ -1,8 +1,8 @@
 MCP Daytona validation
-Started: 2026-08-21T03:18:52.514Z
+Started: 2026-08-21T03:22:15.098Z
 ========================================================================================
 PRE-FLIGHT
-PASS  Git head — 3bd30620667faf5a7ff84dc2909ebc5c5ea770bf
+PASS  Git head — 3fcd721e33585c0c721eebd0ec4030dabbe4f48f
 PASS  Git branch — main
 PASS  Git working tree — clean
 
@@ -13,9 +13,9 @@ pnpm install --frozen-lockfile
 Lockfile is up to date, resolution step is skipped
 Already up to date
 
-Done in 1.1s using pnpm v10.34.5
+Done in 855ms using pnpm v10.34.5
 RESULT: PASS (exit 0)
-DURATION: 1.3s
+DURATION: 1.0s
 
 ========================================================================================
 TYPECHECK
@@ -25,7 +25,7 @@ pnpm run typecheck
 > mcp-daytona@0.2.0 typecheck C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
 > tsc --noEmit
 RESULT: PASS (exit 0)
-DURATION: 5.7s
+DURATION: 2.2s
 
 ========================================================================================
 LINT
@@ -35,7 +35,7 @@ pnpm run lint
 > mcp-daytona@0.2.0 lint C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
 > eslint .
 RESULT: PASS (exit 0)
-DURATION: 14.6s
+DURATION: 4.5s
 
 SKIP  Tests — no test script configured
 
@@ -55,56 +55,6 @@ pnpm run cf:build
 └─────────────────────────────┘
 
  ELIFECYCLE  Command failed with exit code 1.
-Progress: resolved 1, reused 0, downloaded 0, added 0
-Progress: resolved 4, reused 2, downloaded 0, added 0
-Progress: resolved 17, reused 9, downloaded 1, added 0
-Progress: resolved 29, reused 18, downloaded 2, added 0
-Progress: resolved 51, reused 41, downloaded 2, added 0
-Progress: resolved 115, reused 78, downloaded 2, added 0
-Progress: resolved 131, reused 89, downloaded 2, added 0
-Progress: resolved 148, reused 89, downloaded 19, added 0
-Progress: resolved 160, reused 89, downloaded 26, added 0
-Progress: resolved 168, reused 91, downloaded 38, added 0
-Progress: resolved 187, reused 104, downloaded 45, added 0
-Progress: resolved 227, reused 140, downloaded 52, added 0
-Progress: resolved 263, reused 166, downloaded 57, added 0
-Progress: resolved 298, reused 197, downloaded 65, added 0
-Progress: resolved 313, reused 209, downloaded 70, added 0
-Progress: resolved 313, reused 209, downloaded 72, added 0
-Progress: resolved 314, reused 209, downloaded 72, added 0
-Progress: resolved 325, reused 218, downloaded 72, added 0
-Progress: resolved 335, reused 221, downloaded 72, added 0
-Progress: resolved 362, reused 225, downloaded 72, added 0
-Progress: resolved 364, reused 227, downloaded 72, added 0
-Progress: resolved 429, reused 241, downloaded 72, added 0
-Progress: resolved 433, reused 244, downloaded 72, added 0
-Progress: resolved 443, reused 250, downloaded 74, added 0
-Progress: resolved 445, reused 252, downloaded 74, added 0
-Progress: resolved 447, reused 254, downloaded 75, added 0
- WARN  2 deprecated subdependencies found: glob@9.3.5, node-domexception@1.0.0
-Progress: resolved 448, reused 254, downloaded 75, added 0
-Packages: +328
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Progress: resolved 448, reused 255, downloaded 75, added 31
-Progress: resolved 448, reused 255, downloaded 75, added 32
-Progress: resolved 448, reused 255, downloaded 75, added 70
-Progress: resolved 448, reused 255, downloaded 75, added 71
-Progress: resolved 448, reused 255, downloaded 75, added 183
-Progress: resolved 448, reused 255, downloaded 75, added 270
-Progress: resolved 448, reused 255, downloaded 75, added 271
-Progress: resolved 448, reused 255, downloaded 76, added 297
-Progress: resolved 448, reused 255, downloaded 76, added 326
-Progress: resolved 448, reused 255, downloaded 76, added 327
-Progress: resolved 448, reused 255, downloaded 76, added 328
-Progress: resolved 448, reused 255, downloaded 76, added 328, done
-╭ Warning ─────────────────────────────────────────────────────────────────────╮
-│                                                                              │
-│   Ignored build scripts: esbuild@0.25.4, esbuild@0.28.1,                     │
-│   workerd@1.20260820.1.                                                      │
-│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
-│   to run scripts.                                                            │
-│                                                                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
 WARN OpenNext is not fully compatible with Windows.
 WARN For optimal performance, it is recommended to use Windows Subsystem for Linux (WSL).
 WARN While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.
@@ -130,7 +80,7 @@ Commit it and re-run the build.
 
 Node.js v24.13.1
 RESULT: FAIL (exit 1)
-DURATION: 59.8s
+DURATION: 5.6s
 PASS  Post-validation Git diff check — only the validation log changed
 
 ========================================================================================
@@ -150,8 +100,8 @@ PASSED: 7
 FAILED: 1
 SKIPPED: 2
 RESULT: FAIL (exit 1)
-DURATION: 81.7s
-Completed: 2026-08-21T03:20:14.260Z
+DURATION: 13.4s
+Completed: 2026-08-21T03:22:28.543Z
 Log file: mcp-daytona-validation.log
 
 ========================================================================================
