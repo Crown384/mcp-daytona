@@ -33,7 +33,7 @@ with_git_auth() (
   cat > "$ASKPASS" <<EOF
 #!/bin/sh
 case "\$1" in
-  *Username*) printf '%s\n' 'x-access-token' ;;
+  *Username*) printf '%s\n' "$GITHUB_OWNER" ;;
   *) cat "$TOKEN_FILE"; printf '\n' ;;
 esac
 EOF
