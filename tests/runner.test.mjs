@@ -7,6 +7,7 @@ import { test } from "node:test";
 const runnerSource = readFileSync(resolve("lib/runner.ts"), "utf8");
 const configSource = readFileSync(resolve("lib/config.ts"), "utf8");
 const daytonaSource = readFileSync(resolve("lib/daytona.ts"), "utf8");
+const mcpSource = readFileSync(resolve("lib/mcp.ts"), "utf8");
 const smokeSource = readFileSync(resolve("scripts/daytona-smoke.mjs"), "utf8");
 const marker = "String.raw`";
 const start = runnerSource.indexOf(marker);
@@ -15,7 +16,7 @@ assert.ok(start >= 0 && end > start, "RUNNER_SCRIPT raw template must exist");
 const runner = runnerSource.slice(start + marker.length, end);
 
 test("removed repository allowlist cannot regress", () => {
-  for (const source of [configSource, daytonaSource, runnerSource]) {
+  for (const source of [configSource, daytonaSource, runnerSource, mcpSource]) {
     assert.equal(source.includes("ALLOWED_GITHUB_REPOS"), false);
     assert.equal(source.includes("allowedRepositories"), false);
   }
@@ -33,9 +34,46 @@ test("runner raw template does not leak escaped shell parameter expansions", () 
 });
 
 test("runner reads required environment values explicitly", () => {
-  for (const name of ["ACTION", "SYNC_MODE", "GITHUB_OWNER", "GITHUB_TOKEN", "REPOSITORY", "BRANCH"]) {
+  for (const name of [
+    "ACTION",
+    "SYNC_MODE",
+    "GITHUB_OWNER",
+    "GITHUB_TOKEN",
+    "REPOSITORY",
+    "BRANCH",
+    "COMMAND",
+    "WORKING_PATH",
+  ]) {
     assert.match(runner, new RegExp(`printenv ${name}`));
   }
+});
+
+test("runner exposes arbitrary command execution with root path default", () => {
+  assert.match(runner, /WORKING_PATH=.*printenv WORKING_PATH/);
+  assert.match(runner, /WORKING_PATH="\."/);
+  assert.match(runner, /bash -lc "\$COMMAND"/);
+  assert.match(runner, /== custom command ==/);
+});
+
+test("runner validates the selected working directory stays in the repo", () => {
+  assert.match(runner, /realpath -e/);
+  assert.match(runner, /Working path escapes repository/);
+  assert.match(runner, /Working path does not exist/);
+  assert.match(runner, /Working path is not a directory/);
+});
+
+test("MCP schemas expose command and path on fresh and rerun cycles", () => {
+  assert.match(mcpSource, /const COMMAND_PROPERTIES/);
+  assert.match(mcpSource, /command:/);
+  assert.match(mcpSource, /path:/);
+  assert.match(mcpSource, /default: "\."/);
+  assert.match(mcpSource, /command: parseCommand\(args\)/);
+  assert.match(mcpSource, /workingPath: parseWorkingPath\(args\)/);
+});
+
+test("MCP rejects absolute and parent-traversal paths", () => {
+  assert.match(mcpSource, /path must be relative to the repository root/);
+  assert.match(mcpSource, /path cannot traverse outside the repository/);
 });
 
 test("runner keeps GitHub token out of repository child processes", () => {
@@ -58,19 +96,21 @@ test("runner is read-only and never pushes implementation source", () => {
   assert.equal(/git\s+add/.test(runner), false);
 });
 
-test("runner rejects dirty working trees caused by QA commands", () => {
+test("runner rejects dirty working trees caused by execution commands", () => {
   assert.match(runner, /git status --porcelain/);
-  assert.match(runner, /Repository working tree changed during the QA cycle/);
+  assert.match(runner, /Repository working tree changed during the execution cycle/);
 });
 
-test("live smoke test clones pamaos-next main and always destroys its sandbox", () => {
+test("live smoke test uses exact runner, clones pamaos-next main, runs command, and destroys sandbox", () => {
+  assert.match(smokeSource, /loadRunnerScript/);
   assert.match(smokeSource, /const REPOSITORY = "pamaos-next"/);
   assert.match(smokeSource, /const BRANCH = "main"/);
-  assert.match(smokeSource, /git clone/);
+  assert.match(smokeSource, /COMMAND: smokeCommand/);
+  assert.match(smokeSource, /WORKING_PATH: "\."/);
+  assert.match(smokeSource, /== custom command ==/);
   assert.match(smokeSource, /finally \{/);
   assert.match(smokeSource, /method: "DELETE"/);
   assert.match(smokeSource, /SANDBOX_DESTROYED=/);
-  assert.equal(/git\s+push/.test(smokeSource), false);
 });
 
 test("runner Bash syntax is valid when bash is installed", (context) => {
