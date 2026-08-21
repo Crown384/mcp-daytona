@@ -5,11 +5,14 @@ ACTION="$(printenv ACTION 2>/dev/null || true)"
 SYNC_MODE="$(printenv SYNC_MODE 2>/dev/null || true)"
 GITHUB_OWNER="$(printenv GITHUB_OWNER 2>/dev/null || true)"
 TOKEN_SECRET="$(printenv GITHUB_TOKEN 2>/dev/null || true)"
+COMMAND="$(printenv COMMAND 2>/dev/null || true)"
+WORKING_PATH="$(printenv WORKING_PATH 2>/dev/null || true)"
 REPO_DIR="$HOME/workspace/repo"
 CONTEXT_FILE="$HOME/.mcp-daytona-context"
 
 [ -n "$ACTION" ] || ACTION="fresh"
 [ -n "$SYNC_MODE" ] || SYNC_MODE="reset"
+[ -n "$WORKING_PATH" ] || WORKING_PATH="."
 
 if [ -z "$TOKEN_SECRET" ]; then
   printf 'Missing runner environment variable: GITHUB_TOKEN\n'
@@ -126,6 +129,41 @@ sync_checkout() {
   git reset --hard "origin/$BRANCH" || return $?
 }
 
+resolve_working_directory() {
+  REPO_REAL="$(realpath -e "$REPO_DIR" 2>/dev/null)" || return 2
+  TARGET_DIR="$(realpath -e "$REPO_DIR/$WORKING_PATH" 2>/dev/null)" || {
+    printf 'Working path does not exist: %s\n' "$WORKING_PATH"
+    return 2
+  }
+
+  case "$TARGET_DIR" in
+    "$REPO_REAL"|"$REPO_REAL"/*) ;;
+    *)
+      printf 'Working path escapes repository: %s\n' "$WORKING_PATH"
+      return 2
+      ;;
+  esac
+
+  if [ ! -d "$TARGET_DIR" ]; then
+    printf 'Working path is not a directory: %s\n' "$WORKING_PATH"
+    return 2
+  fi
+}
+
+run_custom_command() {
+  resolve_working_directory || return $?
+  cd "$TARGET_DIR" || return 1
+  printf '\n== custom command ==\n'
+  printf 'path=%s\n' "$WORKING_PATH"
+  printf 'command=%s\n' "$COMMAND"
+  bash -lc "$COMMAND"
+  CODE=$?
+  if [ "$CODE" -ne 0 ] && [ "$STATUS" -eq 0 ]; then
+    STATUS="$CODE"
+  fi
+  return 0
+}
+
 install_dependencies() {
   if [ -f pnpm-lock.yaml ]; then
     PACKAGE_MANAGER=pnpm
@@ -185,7 +223,9 @@ cd "$REPO_DIR" || exit 1
 printf 'Daytona cycle: %s/%s @ %s\n' "$GITHUB_OWNER" "$REPOSITORY" "$BRANCH"
 printf 'Checked out: %s\n' "$(git rev-parse HEAD)"
 
-if [ ! -f package.json ]; then
+if [ -n "$COMMAND" ]; then
+  run_custom_command || exit $?
+elif [ ! -f package.json ]; then
   printf '\nNo package.json found; skipping Node checks.\n'
 else
   install_dependencies
@@ -196,11 +236,12 @@ else
   fi
 fi
 
+cd "$REPO_DIR" || exit 1
 printf '\n== git status ==\n'
 GIT_STATUS="$(git status --porcelain)"
 if [ -n "$GIT_STATUS" ]; then
   printf '%s\n' "$GIT_STATUS"
-  printf 'Repository working tree changed during the QA cycle.\n'
+  printf 'Repository working tree changed during the execution cycle.\n'
   if [ "$STATUS" -eq 0 ]; then
     STATUS=3
   fi
