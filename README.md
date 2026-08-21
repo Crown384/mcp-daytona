@@ -25,7 +25,6 @@ Cloudflare variables:
 - `DAYTONA_API_URL` (normally `https://app.daytona.io/api`)
 - `DAYTONA_TARGET` (normally `us`)
 - `GITHUB_OWNER`
-- `ALLOWED_GITHUB_REPOS` (comma-separated repository names)
 
 `wrangler.jsonc` uses `keep_vars: true`, so deployments preserve variables configured in the Cloudflare dashboard.
 
@@ -70,7 +69,7 @@ https://YOUR-DOMAIN/mcp
 
 No custom `MCP_API_KEY` layer is implemented. Configure the private ChatGPT app/plugin with no additional MCP authentication.
 
-Because the Worker endpoint itself is internet-reachable, private ChatGPT visibility is not network-level access control. The repository allowlist, strict tool schemas, sandbox isolation, and removal of GitHub credentials from repository processes remain important safety boundaries. If broader access is ever needed, add proper MCP authentication rather than a custom query-string key.
+Because the Worker endpoint itself is internet-reachable, private ChatGPT visibility is not network-level access control. The server uses strict tool schemas, sandbox isolation, managed-sandbox labels, and removes GitHub credentials from repository processes. Repository access is unrestricted within the configured `GITHUB_OWNER`; any repository accessible to the configured GitHub token can be used.
 
 ## Tools
 
@@ -80,7 +79,7 @@ Creates a fresh managed sandbox and runs the repository cycle.
 
 Inputs:
 
-- `repository` - allowed repository name without the GitHub owner.
+- `repository` - repository name without the GitHub owner.
 - `branch` - existing branch, default `main`.
 - `timeout_seconds` - 60 to 3600, default 1200.
 - `after_run` - `delete`, `keep`, `stop`, or `pause`.
