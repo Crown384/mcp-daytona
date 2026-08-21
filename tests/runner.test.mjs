@@ -113,6 +113,14 @@ test("live smoke test uses exact runner, clones pamaos-next main, runs command, 
   assert.match(smokeSource, /SANDBOX_DESTROYED=/);
 });
 
+test("live smoke normalizes Windows line endings before Linux execution", () => {
+  assert.match(smokeSource, /replace\(\/\\r\\n\?\/g, "\\n"\)/);
+});
+
+test("live smoke retries transient network failures ten times", () => {
+  assert.match(smokeSource, /const FETCH_ATTEMPTS = 10/);
+});
+
 test("runner Bash syntax is valid when bash is installed", (context) => {
   const probe = spawnSync("bash", ["--version"], { encoding: "utf8", windowsHide: true });
   if (probe.error || probe.status !== 0) {
