@@ -1,8 +1,8 @@
 export const RUNNER_SCRIPT = String.raw`set -uo pipefail
 
 STATUS=0
-ACTION="\${ACTION:-fresh}"
-SYNC_MODE="\${SYNC_MODE:-reset}"
+ACTION="$(printenv ACTION 2>/dev/null || printf 'fresh')"
+SYNC_MODE="$(printenv SYNC_MODE 2>/dev/null || printf 'reset')"
 REPO_DIR="$HOME/workspace/repo"
 CONTEXT_FILE="$HOME/.mcp-daytona-context"
 TOKEN_SECRET="$GITHUB_TOKEN"
