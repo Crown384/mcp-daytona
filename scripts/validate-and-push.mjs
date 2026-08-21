@@ -106,6 +106,22 @@ function hasPackageScript(name) {
   return typeof packageJson.scripts?.[name] === "string";
 }
 
+function runnerTemplateIssues() {
+  const source = readFileSync("lib/runner.ts", "utf8");
+  const marker = "String.raw`";
+  const start = source.indexOf(marker);
+  const end = source.lastIndexOf("`;");
+  if (start < 0 || end <= start) return ["RUNNER_SCRIPT String.raw template could not be located"];
+
+  const body = source.slice(start + marker.length, end);
+  const issues = [];
+  if (body.includes("\\${")) issues.push("escaped shell parameter expansion would remain literal at runtime");
+  if (body.includes("\\\\n")) issues.push("double-escaped newline found inside raw Bash template");
+  if (!body.includes('ACTION="$(printenv ACTION')) issues.push("ACTION is not read from the runner environment");
+  if (!body.includes('SYNC_MODE="$(printenv SYNC_MODE')) issues.push("SYNC_MODE is not read from the runner environment");
+  return issues;
+}
+
 function printProcessOutput(result) {
   if (result.stdout) consoleOnly(result.stdout.trimEnd());
   if (result.stderr) consoleOnly(result.stderr.trimEnd());
@@ -167,6 +183,13 @@ let canValidate = Boolean(head) && Boolean(branch) && initialChanges.length === 
 let lockfileChanged = false;
 
 if (canValidate) {
+  const runnerIssues = runnerTemplateIssues();
+  canValidate = record(
+    "Runner template sanity check",
+    runnerIssues.length === 0,
+    runnerIssues.length === 0 ? "shell environment expansion and raw-string escaping look valid" : runnerIssues.join(" | "),
+  ) && canValidate;
+
   canValidate = await runPnpm(
     "Install dependencies",
     ["install", "--no-frozen-lockfile", "--reporter=append-only"],
