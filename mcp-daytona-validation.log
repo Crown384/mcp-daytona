@@ -1,11 +1,11 @@
 MCP Daytona validation
-Started: 2026-08-21T07:42:06.670Z
+Started: 2026-08-21T07:54:48.637Z
 ========================================================================================
 PRE-FLIGHT
-PASS  Git head — e4c1f6971bc22941f0f0ecf9bbfea84ba2dd6d26
+PASS  Git head — 00e35e5eb08629b06f74b03435f883337d7b86d6
 PASS  Git branch — main
 PASS  Git working tree — clean
-PASS  Runner template sanity check — shell environment expansion and raw-string escaping look valid
+PASS  Runner template sanity check — shell expansion, escaping, and read-only policy look valid
 
 ========================================================================================
 INSTALL DEPENDENCIES
@@ -13,7 +13,7 @@ pnpm install --no-frozen-lockfile --reporter=append-only
 ----------------------------------------------------------------------------------------
 Lockfile is up to date, resolution step is skipped
 Progress: resolved 0, reused 1, downloaded 0, added 0
-Progress: resolved 0, reused 42, downloaded 0, added 0
+Progress: resolved 0, reused 77, downloaded 0, added 0
 Packages: -168
 --------------------------------------------------------------------------------
 Progress: resolved 0, reused 167, downloaded 0, added 0, done
@@ -26,9 +26,9 @@ Progress: resolved 0, reused 167, downloaded 0, added 0, done
 │   to run scripts.                                                            │
 │                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-Done in 4.8s using pnpm v10.34.5
+Done in 4.6s using pnpm v10.34.5
 RESULT: PASS (exit 0)
-DURATION: 5.0s
+DURATION: 4.9s
 PASS  Dependency metadata diff check — lockfile already synchronized
 
 ========================================================================================
@@ -40,7 +40,7 @@ pnpm run typecheck
 > tsc --noEmit
 
 RESULT: PASS (exit 0)
-DURATION: 5.8s
+DURATION: 7.1s
 
 ========================================================================================
 LINT
@@ -51,9 +51,50 @@ pnpm run lint
 > eslint .
 
 RESULT: PASS (exit 0)
-DURATION: 7.1s
+DURATION: 9.3s
 
-SKIP  Tests — no test script configured
+========================================================================================
+TESTS
+pnpm run test
+----------------------------------------------------------------------------------------
+
+> mcp-daytona@0.2.0 test C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
+> node --test tests/runner.test.mjs
+
+✔ removed repository allowlist cannot regress (3.2808ms)
+✔ Daytona region is not hardcoded (0.3156ms)
+✔ runner raw template does not leak escaped shell parameter expansions (0.2147ms)
+✔ runner reads required environment values explicitly (0.9176ms)
+✔ runner keeps GitHub token out of repository child processes (0.3609ms)
+✔ runner Git credentials are temporary, cleaned, and use configured owner (0.2972ms)
+✔ runner is read-only and never pushes implementation source (0.5473ms)
+✔ runner rejects dirty working trees caused by QA commands (0.2253ms)
+✔ live smoke test clones pamaos-next main and always destroys its sandbox (0.7079ms)
+✔ runner Bash syntax is valid when bash is installed (225.9171ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 459.8824
+RESULT: PASS (exit 0)
+DURATION: 1.3s
+
+========================================================================================
+DAYTONA LIVE CLONE SMOKE
+node --env-file=.env.local scripts/daytona-smoke.mjs
+----------------------------------------------------------------------------------------
+Creating Daytona smoke-test sandbox (daytona-small)...
+SANDBOX_ID=1362ae61-1055-46a5-8273-c46f2c8d237d
+Cloning into '/home/daytona/pamaos-next-smoke'...
+CLONED_HEAD=25ebb3684ece8c78c7672605f39cbf0ce96b0ca4
+CLONED_BRANCH=main
+PASS cloned Crown384/pamaos-next@main
+SANDBOX_DESTROYED=1362ae61-1055-46a5-8273-c46f2c8d237d
+RESULT: PASS (exit 0)
+DURATION: 8.8s
 
 SKIP  Fallow audit — Fallow is not configured in this repository
 
@@ -89,18 +130,18 @@ workerd compatibility_date: 2026-08-21
 
 ▲ Next.js 16.3.1 (Turbopack)
 - Environments: .env.local, .env
-✓ Running next.config.ts took 57ms
+✓ Running next.config.ts took 396ms
 
   Creating an optimized production build ...
-✓ Compiled successfully in 1229ms
+✓ Compiled successfully in 2.7s
   Running TypeScript ...
-  Finished TypeScript in 5.2s ...
+  Finished TypeScript in 6.2s ...
   Collecting page data using 6 workers ...
   Generating static pages using 6 workers (0/5) ...
   Generating static pages using 6 workers (1/5) 
   Generating static pages using 6 workers (2/5) 
   Generating static pages using 6 workers (3/5) 
-✓ Generating static pages using 6 workers (5/5) in 1221ms
+✓ Generating static pages using 6 workers (5/5) in 1703ms
   Finalizing page optimization ...
 
 Route (app)
@@ -117,13 +158,13 @@ Route (app)
 │ OpenNext — Generating bundle │
 └──────────────────────────────┘
 
-(node:17968) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(node:23944) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 Bundling middleware function...
 Bundling static assets...
 Bundling cache assets...
 Building server function: default...
-Applying code patches: 7.206s
+Applying code patches: 10.553s
 # copyPackageTemplateFiles
 [35m⚙️ Bundling the OpenNext server...
 [0m
@@ -131,7 +172,7 @@ Applying code patches: 7.206s
 [0m
 OpenNext build complete.
 RESULT: PASS (exit 0)
-DURATION: 37.7s
+DURATION: 45.5s
 PASS  Post-validation Git diff check — only the validation log changed
 
 ========================================================================================
@@ -144,17 +185,18 @@ PASS  Install dependencies
 PASS  Dependency metadata diff check
 PASS  Typecheck
 PASS  Lint
-SKIP  Tests
+PASS  Tests
+PASS  Daytona live clone smoke
 SKIP  Fallow audit
 PASS  Cloudflare production build
 PASS  Post-validation Git diff check
-TOTAL: 12
-PASSED: 10
+TOTAL: 13
+PASSED: 12
 FAILED: 0
-SKIPPED: 2
+SKIPPED: 1
 RESULT: PASS (exit 0)
-DURATION: 56.7s
-Completed: 2026-08-21T07:43:03.384Z
+DURATION: 78.2s
+Completed: 2026-08-21T07:56:06.881Z
 Log file: mcp-daytona-validation.log
 
 ========================================================================================
