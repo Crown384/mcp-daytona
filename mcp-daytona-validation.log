@@ -1,21 +1,63 @@
 MCP Daytona validation
-Started: 2026-08-21T03:25:49.795Z
+Started: 2026-08-21T03:33:25.142Z
 ========================================================================================
 PRE-FLIGHT
-PASS  Git head — a680d76005693dec8ae2569fe196f06643392f33
+PASS  Git head — 0085de1b629044380042908b5d6c3af6f2ad7ff6
 PASS  Git branch — main
 PASS  Git working tree — clean
 
 ========================================================================================
 INSTALL DEPENDENCIES
-pnpm install --frozen-lockfile
+pnpm install --no-frozen-lockfile
 ----------------------------------------------------------------------------------------
-Lockfile is up to date, resolution step is skipped
-Already up to date
+Progress: resolved 1, reused 0, downloaded 0, added 0
+ WARN  deprecated eslint@9.39.5: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+Progress: resolved 12, reused 11, downloaded 0, added 0
+Progress: resolved 101, reused 80, downloaded 0, added 0
+Progress: resolved 230, reused 168, downloaded 0, added 0
+Progress: resolved 499, reused 366, downloaded 1, added 0
+Progress: resolved 537, reused 406, downloaded 1, added 0
+Progress: resolved 573, reused 434, downloaded 1, added 0
+Progress: resolved 599, reused 460, downloaded 2, added 0
+Progress: resolved 614, reused 475, downloaded 2, added 0
+Progress: resolved 615, reused 476, downloaded 2, added 0
+Progress: resolved 656, reused 493, downloaded 2, added 0
+Progress: resolved 712, reused 547, downloaded 2, added 0
+Progress: resolved 738, reused 575, downloaded 2, added 0
+Progress: resolved 780, reused 617, downloaded 2, added 0
+Progress: resolved 785, reused 622, downloaded 2, added 0
+ WARN  2 deprecated subdependencies found: glob@9.3.5, node-domexception@1.0.0
+Packages: +266
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 786, reused 623, downloaded 2, added 24
+Progress: resolved 786, reused 623, downloaded 3, added 48
+Progress: resolved 786, reused 623, downloaded 3, added 58
+Progress: resolved 786, reused 623, downloaded 3, added 113
+Progress: resolved 786, reused 623, downloaded 3, added 122
+Progress: resolved 786, reused 623, downloaded 3, added 173
+Progress: resolved 786, reused 623, downloaded 3, added 264
+Progress: resolved 786, reused 623, downloaded 3, added 265
+Progress: resolved 786, reused 623, downloaded 4, added 265
+Progress: resolved 786, reused 623, downloaded 4, added 266, done
 
-Done in 1s using pnpm v10.34.5
+dependencies:
++ @opennextjs/cloudflare 1.20.2
+
+devDependencies:
++ wrangler 4.124.0 (4.125.0 is available)
+
+╭ Warning ─────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│   Ignored build scripts: esbuild@0.25.4, esbuild@0.28.1,                     │
+│   workerd@1.20260815.1.                                                      │
+│   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+│   to run scripts.                                                            │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 35s using pnpm v10.34.5
 RESULT: PASS (exit 0)
-DURATION: 1.2s
+DURATION: 35.3s
+PASS  Dependency metadata diff check —  M pnpm-lock.yaml
 
 ========================================================================================
 TYPECHECK
@@ -24,11 +66,8 @@ pnpm run typecheck
 
 > mcp-daytona@0.2.0 typecheck C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
 > tsc --noEmit
-
-open-next.config.ts(1,40): error TS2307: Cannot find module '@opennextjs/cloudflare' or its corresponding type declarations.
- ELIFECYCLE  Command failed with exit code 2.
-RESULT: FAIL (exit 2)
-DURATION: 3.7s
+RESULT: PASS (exit 0)
+DURATION: 7.4s
 
 ========================================================================================
 LINT
@@ -38,7 +77,7 @@ pnpm run lint
 > mcp-daytona@0.2.0 lint C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
 > eslint .
 RESULT: PASS (exit 0)
-DURATION: 6.6s
+DURATION: 5.5s
 
 SKIP  Tests — no test script configured
 
@@ -50,71 +89,92 @@ pnpm run cf:build
 ----------------------------------------------------------------------------------------
 
 > mcp-daytona@0.2.0 cf:build C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
-> pnpm dlx @opennextjs/cloudflare@latest build
+> opennextjs-cloudflare build
 
 
 ┌─────────────────────────────┐
 │ OpenNext — Cloudflare build │
 └─────────────────────────────┘
 
+App directory: C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
+Next.js version : 16.3.1
+@opennextjs/cloudflare version: 1.20.2
+@opennextjs/aws version: 4.1.0
+workerd compatibility_date: 2026-08-21
+
+┌─────────────────────────────────┐
+│ OpenNext — Building Next.js app │
+└─────────────────────────────────┘
+
+
+> mcp-daytona@0.2.0 build C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
+> next build
+
+▲ Next.js 16.3.1 (Turbopack)
+- Environments: .env.local
+✓ Running next.config.ts took 348ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 12.5s
+  Running TypeScript ...
+  Finished TypeScript in 12.1s ...
+  Collecting page data using 6 workers ...
+  Generating static pages using 6 workers (0/5) ...
+  Generating static pages using 6 workers (1/5) 
+  Generating static pages using 6 workers (2/5) 
+  Generating static pages using 6 workers (3/5) 
+✓ Generating static pages using 6 workers (5/5) in 1492ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+└ ƒ /mcp
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+┌──────────────────────────────┐
+│ OpenNext — Generating bundle │
+└──────────────────────────────┘
+
+Bundling middleware function...
+Bundling static assets...
+Bundling cache assets...
+Building server function: default...
  ELIFECYCLE  Command failed with exit code 1.
 WARN OpenNext is not fully compatible with Windows.
 WARN For optimal performance, it is recommended to use Windows Subsystem for Linux (WSL).
 WARN While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.
-X [ERROR] Could not resolve "@opennextjs/cloudflare"
+(node:26992) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+node:fs:1867
+  binding.symlink(
+          ^
 
-    open-next.config.ts:1:39:
-      1 │ import { defineCloudflareConfig } from "@opennextjs/cloudflare";
-        ╵                                        ~~~~~~~~~~~~~~~~~~~~~~~~
-
-  You can mark the path "@opennextjs/cloudflare" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
-
-node:internal/modules/run_main:107
-    triggerUncaughtException(
-    ^
-
-Error: Build failed with 1 error:
-open-next.config.ts:1:39: ERROR: Could not resolve "@opennextjs/cloudflare"
-    at failureErrorWithLog (C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:1463:15)
-    at C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:924:25
-    at C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:876:52
-    at buildResponseToResult (C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:922:7)
-    at C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:949:16
-    at responseCallbacks.<computed> (C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:601:9)
-    at handleIncomingPacket (C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:656:12)
-    at Socket.readFromStdout (C:\Users\crown\AppData\Local\pnpm-cache\dlx\e9687e4a353df9dea727a6bd1d206d48c21f49f21ebe0e79ff14804ab71963fc\1a022547d16-6294\node_modules\.pnpm\esbuild@0.25.4\node_modules\esbuild\lib\main.js:579:7)
-    at Socket.emit (node:events:508:28)
-    at addChunk (node:internal/streams/readable:559:12) {
-  errors: [
-    {
-      detail: undefined,
-      id: '',
-      location: {
-        column: 39,
-        file: 'open-next.config.ts',
-        length: 24,
-        line: 1,
-        lineText: 'import { defineCloudflareConfig } from "@opennextjs/cloudflare";',
-        namespace: '',
-        suggestion: ''
-      },
-      notes: [
-        {
-          location: null,
-          text: 'You can mark the path "@opennextjs/cloudflare" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.'
-        }
-      ],
-      pluginName: '',
-      text: 'Could not resolve "@opennextjs/cloudflare"'
-    }
-  ],
-  warnings: []
+Error: EPERM: operation not permitted, symlink 'C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona\node_modules\.pnpm\@next+env@16.3.1\node_modules\@next\env' -> 'C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona\.open-next\server-functions\default\node_modules\.pnpm\next@16.3.1_@babel+core@7.2_737b30b2e20c74b7ac2659958c50e2d7\node_modules\@next\env'
+    at symlinkSync (node:fs:1867:11)
+    at file:///C:/Users/crown/PAMA/PAMAGlobal/MCPs/daytona/node_modules/.pnpm/@opennextjs+aws@4.1.0_next@_76e8932235cdcccaafc3e7c79a209ff9/node_modules/@opennextjs/aws/dist/build/copyTracedFiles.js:228:17
+    at Map.forEach (<anonymous>)
+    at copyTracedFiles (file:///C:/Users/crown/PAMA/PAMAGlobal/MCPs/daytona/node_modules/.pnpm/@opennextjs+aws@4.1.0_next@_76e8932235cdcccaafc3e7c79a209ff9/node_modules/@opennextjs/aws/dist/build/copyTracedFiles.js:200:17)
+    at generateBundle (file:///C:/Users/crown/PAMA/PAMAGlobal/MCPs/daytona/node_modules/.pnpm/@opennextjs+cloudflare@1.20_e276ebd99e7ae7f1fedb790510d29da0/node_modules/@opennextjs/cloudflare/dist/cli/build/open-next/createServerBundle.js:121:60)
+    at createServerBundle (file:///C:/Users/crown/PAMA/PAMAGlobal/MCPs/daytona/node_modules/.pnpm/@opennextjs+cloudflare@1.20_e276ebd99e7ae7f1fedb790510d29da0/node_modules/@opennextjs/cloudflare/dist/cli/build/open-next/createServerBundle.js:75:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async build (file:///C:/Users/crown/PAMA/PAMAGlobal/MCPs/daytona/node_modules/.pnpm/@opennextjs+cloudflare@1.20_e276ebd99e7ae7f1fedb790510d29da0/node_modules/@opennextjs/cloudflare/dist/cli/build/build.js:87:5)
+    at async buildCommand (file:///C:/Users/crown/PAMA/PAMAGlobal/MCPs/daytona/node_modules/.pnpm/@opennextjs+cloudflare@1.20_e276ebd99e7ae7f1fedb790510d29da0/node_modules/@opennextjs/cloudflare/dist/cli/commands/build.js:40:5) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'symlink',
+  path: 'C:\\Users\\crown\\PAMA\\PAMAGlobal\\MCPs\\daytona\\node_modules\\.pnpm\\@next+env@16.3.1\\node_modules\\@next\\env',
+  dest: 'C:\\Users\\crown\\PAMA\\PAMAGlobal\\MCPs\\daytona\\.open-next\\server-functions\\default\\node_modules\\.pnpm\\next@16.3.1_@babel+core@7.2_737b30b2e20c74b7ac2659958c50e2d7\\node_modules\\@next\\env'
 }
 
 Node.js v24.13.1
 RESULT: FAIL (exit 1)
-DURATION: 7.6s
-PASS  Post-validation Git diff check — only the validation log changed
+DURATION: 44.7s
+PASS  Post-validation Git diff check —  M pnpm-lock.yaml
 
 ========================================================================================
 FINAL SUMMARY
@@ -122,21 +182,22 @@ PASS  Git head
 PASS  Git branch
 PASS  Git working tree
 PASS  Install dependencies
-FAIL  Typecheck
+PASS  Dependency metadata diff check
+PASS  Typecheck
 PASS  Lint
 SKIP  Tests
 SKIP  Fallow audit
 FAIL  Cloudflare production build
 PASS  Post-validation Git diff check
-TOTAL: 10
-PASSED: 6
-FAILED: 2
+TOTAL: 11
+PASSED: 8
+FAILED: 1
 SKIPPED: 2
 RESULT: FAIL (exit 1)
-DURATION: 19.4s
-Completed: 2026-08-21T03:26:09.179Z
+DURATION: 93.4s
+Completed: 2026-08-21T03:34:58.538Z
 Log file: mcp-daytona-validation.log
 
 ========================================================================================
-LOG COMMIT + PUSH
-The validation log will now be committed as the only staged path and pushed to the current branch.
+VALIDATION ARTIFACT COMMIT + PUSH
+The validation log and generated pnpm lockfile will be committed and pushed.
