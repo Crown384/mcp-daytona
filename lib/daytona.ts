@@ -59,17 +59,13 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
   const config = getConfig();
   const response = await fetch(`${config.daytonaApiUrl}${path}`, {
     ...init,
-    headers: {
-      Authorization: `Bearer ${config.daytonaApiKey}`,
-      ...init.headers,
-    },
+    headers: { Authorization: `Bearer ${config.daytonaApiKey}`, ...init.headers },
   });
 
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Daytona request ${path} failed (${response.status}): ${text.slice(0, 1_000)}`);
   }
-
   return response;
 }
 
@@ -80,18 +76,14 @@ async function requestJson(path: string, init: RequestInit = {}): Promise<unknow
 }
 
 function truncateLog(log: string): string {
-  if (log.length <= MAX_LOG_CHARS) {
-    return log;
-  }
+  if (log.length <= MAX_LOG_CHARS) return log;
   const head = log.slice(0, 5_000);
   const tail = log.slice(-(MAX_LOG_CHARS - 5_000));
   return `${head}\n\n... log truncated ...\n\n${tail}`;
 }
 
 function labelsOf(value: unknown): JsonRecord | undefined {
-  if (!isRecord(value) || !isRecord(value.labels)) {
-    return undefined;
-  }
+  if (!isRecord(value) || !isRecord(value.labels)) return undefined;
   return value.labels;
 }
 
@@ -111,9 +103,7 @@ function managedContext(value: unknown): { repository: string; branch: string } 
 
 async function getManagedSandboxRaw(sandboxId: string): Promise<unknown> {
   const sandbox = await requestJson(`/sandbox/${encodeURIComponent(sandboxId)}`);
-  if (!isManagedSandbox(sandbox)) {
-    throw new Error("Sandbox is not managed by mcp-daytona");
-  }
+  if (!isManagedSandbox(sandbox)) throw new Error("Sandbox is not managed by mcp-daytona");
   return sandbox;
 }
 
@@ -121,13 +111,7 @@ async function labelSandbox(sandboxId: string, repository: string, branch: strin
   await request(`/sandbox/${encodeURIComponent(sandboxId)}/labels`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      labels: {
-        [MANAGED_BY_KEY]: MANAGED_BY_VALUE,
-        repository,
-        branch,
-      },
-    }),
+    body: JSON.stringify({ labels: { [MANAGED_BY_KEY]: MANAGED_BY_VALUE, repository, branch } }),
   });
 }
 
@@ -155,7 +139,6 @@ async function createSandbox(input: RunCycleInput): Promise<string> {
     await request(`/sandbox/${encodeURIComponent(value.id)}`, { method: "DELETE" }).catch(() => undefined);
     throw error;
   }
-
   return value.id;
 }
 
@@ -180,21 +163,11 @@ async function executeRunner(
 
   const response = await fetch(`${DAYTONA_TOOLBOX_URL}/${encodeURIComponent(sandboxId)}/process/execute`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.daytonaApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      command: `printf '%s' '${encodedScript}' | base64 -d | bash`,
-      cwd: ".",
-      envs,
-      timeout: timeoutSeconds,
-    }),
+    headers: { Authorization: `Bearer ${config.daytonaApiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ command: `printf '%s' '${encodedScript}' | base64 -d | bash`, cwd: ".", envs, timeout: timeoutSeconds }),
   });
   const text = await response.text();
-  if (!response.ok) {
-    throw new Error(`Daytona runner execution failed (${response.status}): ${text.slice(0, 1_000)}`);
-  }
+  if (!response.ok) throw new Error(`Daytona runner execution failed (${response.status}): ${text.slice(0, 1_000)}`);
 
   const value: unknown = text ? JSON.parse(text) : {};
   if (!isRecord(value) || typeof value.exitCode !== "number" || typeof value.result !== "string") {
@@ -203,17 +176,24 @@ async function executeRunner(
   return { exitCode: value.exitCode, log: truncateLog(value.result) };
 }
 
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 async function ensureStarted(sandboxId: string, sandbox: unknown): Promise<void> {
-  const state = isRecord(sandbox) ? sandbox.state : undefined;
-  if (state !== "started") {
-    await request(`/sandbox/${encodeURIComponent(sandboxId)}/start`, { method: "POST" });
+  if (isRecord(sandbox) && sandbox.state === "started") return;
+  await request(`/sandbox/${encodeURIComponent(sandboxId)}/start`, { method: "POST" });
+
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const current = await getManagedSandboxRaw(sandboxId);
+    if (isRecord(current) && current.state === "started") return;
+    await sleep(1_000);
   }
+  throw new Error(`Sandbox ${sandboxId} did not reach started state within 60 seconds`);
 }
 
 async function applyAfterRun(sandboxId: string, afterRun: AfterRun): Promise<Pick<CycleResult, "lifecycleStatus" | "lifecycleError">> {
-  if (afterRun === "keep") {
-    return { lifecycleStatus: "kept" };
-  }
+  if (afterRun === "keep") return { lifecycleStatus: "kept" };
 
   try {
     if (afterRun === "delete") {
@@ -228,19 +208,13 @@ async function applyAfterRun(sandboxId: string, afterRun: AfterRun): Promise<Pic
 }
 
 function filterManagedList(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.filter(isManagedSandbox);
-  }
-  if (!isRecord(value)) {
-    return [];
-  }
+  if (Array.isArray(value)) return value.filter(isManagedSandbox);
+  if (!isRecord(value)) return [];
 
   for (const key of ["items", "sandboxes", "data"] as const) {
-    if (Array.isArray(value[key])) {
-      return { ...value, [key]: value[key].filter(isManagedSandbox) };
-    }
+    if (Array.isArray(value[key])) return { ...value, [key]: value[key].filter(isManagedSandbox) };
   }
-  return value;
+  return [];
 }
 
 export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
@@ -258,7 +232,15 @@ export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
   }
 
   const lifecycle = await applyAfterRun(sandboxId, input.afterRun);
-  return { ...input, sandboxId, exitCode: execution.exitCode, log: execution.log, ...lifecycle };
+  return {
+    repository: input.repository,
+    branch: input.branch,
+    sandboxId,
+    exitCode: execution.exitCode,
+    log: execution.log,
+    afterRun: input.afterRun,
+    ...lifecycle,
+  };
 }
 
 export async function rerunCycle(input: RerunCycleInput): Promise<CycleResult> {
