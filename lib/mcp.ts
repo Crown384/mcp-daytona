@@ -16,10 +16,10 @@ import {
 const CURRENT_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOL = "2025-11-25";
 const SUPPORTED_PROTOCOLS = [CURRENT_PROTOCOL, LEGACY_PROTOCOL, "2025-06-18", "2025-03-26"] as const;
-const SERVER_INFO = { name: "mcp-daytona", version: "0.3.0" } as const;
+const SERVER_INFO = { name: "mcp-daytona", version: "0.4.0" } as const;
 const SERVER_INSTRUCTIONS =
-  "Use GitHub tools for source edits. run_cycle creates a fresh isolated checkout and rerun_cycle reuses a persistent checkout. Both accept an optional command and repo-relative path; path defaults to the repository root. When command is omitted, the standard QA runner executes.";
-const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+$/;
+  "Use GitHub tools for source edits. run_cycle accepts GitHub repositories in owner/repo form and automatically uses the GitHub App installation for that account or organization. rerun_cycle reuses a persistent checkout. Both accept an optional command and repo-relative path; path defaults to the repository root. When command is omitted, the standard QA runner executes.";
+const REPOSITORY_PATTERN = /^(?:[A-Za-z0-9_.-]+\/)?[A-Za-z0-9_.-]+$/;
 const BRANCH_PATTERN = /^[A-Za-z0-9._/-]+$/;
 const SANDBOX_PATTERN = /^[A-Za-z0-9_.-]+$/;
 const MAX_COMMAND_LENGTH = 20_000;
@@ -65,11 +65,14 @@ const RUN_CYCLE_TOOL: Tool = {
   name: "run_cycle",
   title: "Run repository cycle",
   description:
-    "Create a fresh managed Daytona sandbox, clone the requested GitHub repo/branch, then either run the supplied shell command from the supplied repo-relative path or run the standard QA pipeline when command is omitted.",
+    "Create a fresh managed Daytona sandbox, authenticate with the GitHub App installation for the requested owner/repo, clone the requested branch, then either run the supplied shell command from the supplied repo-relative path or run the standard QA pipeline when command is omitted.",
   inputSchema: {
     type: "object",
     properties: {
-      repository: { type: "string", description: "Repository name without owner." },
+      repository: {
+        type: "string",
+        description: "GitHub repository in owner/repo form, for example Crown384/pamaos-next or Onestepsmarter/oss-lms. Legacy unqualified names are accepted only while GITHUB_OWNER fallback is configured.",
+      },
       branch: { type: "string", default: "main", description: "Existing GitHub branch." },
       ...COMMAND_PROPERTIES,
       timeout_seconds: { type: "integer", minimum: 60, maximum: 3600, default: 1200 },
@@ -93,7 +96,7 @@ const RERUN_CYCLE_TOOL: Tool = {
   name: "rerun_cycle",
   title: "Rerun persistent sandbox cycle",
   description:
-    "Reuse a managed Daytona sandbox, optionally sync its checkout, then either run the supplied shell command from the supplied repo-relative path or run the standard QA pipeline when command is omitted.",
+    "Reuse a managed Daytona sandbox, automatically mint a fresh GitHub App installation token for its repository, optionally sync its checkout, then either run the supplied shell command from the supplied repo-relative path or run the standard QA pipeline when command is omitted.",
   inputSchema: {
     type: "object",
     properties: {
