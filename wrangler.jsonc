@@ -16,6 +16,6 @@
     "binding": "ASSETS"
   },
   "secrets": {
-    "required": ["DAYTONA_API_KEY", "GITHUB_TOKEN"]
+    "required": ["DAYTONA_API_KEY", "GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY_BASE64"]
   }
 }
