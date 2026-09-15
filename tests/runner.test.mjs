@@ -33,12 +33,17 @@ test("Daytona region is not hardcoded", () => {
   assert.equal(/\btarget\s*:/.test(daytonaSource), false);
 });
 
-test("GitHub App credentials are the primary multi-owner auth path", () => {
+test("GitHub App is the only server-side repository auth path", () => {
   assert.match(configSource, /GITHUB_APP_ID/);
   assert.match(configSource, /GITHUB_APP_PRIVATE_KEY_BASE64/);
   assert.match(githubAppSource, /getRepositoryCredentials/);
-  assert.match(githubAppSource, /config\.githubAppId && config\.githubAppPrivateKeyBase64/);
+  assert.match(githubAppSource, /return appCredentials\(repository\)/);
   assert.match(githubAppSource, /x-access-token/);
+  assert.equal(configSource.includes("GITHUB_OWNER"), false);
+  assert.equal(configSource.includes("GITHUB_TOKEN"), false);
+  assert.equal(githubAppSource.includes("legacyCredentials"), false);
+  assert.equal(githubAppSource.includes("githubOwner"), false);
+  assert.equal(githubAppSource.includes("githubToken"), false);
 });
 
 test("GitHub App signs RS256 JWTs and resolves repository installations", () => {
@@ -56,11 +61,13 @@ test("GitHub App private key supports GitHub RSA PEM and PKCS8 PEM", () => {
   assert.match(githubAppSource, /crypto\.subtle\.importKey/);
 });
 
-test("repository normalization supports owner/repo and temporary legacy fallback", () => {
+test("repository normalization requires full owner/repo and has no owner fallback", () => {
   assert.match(githubAppSource, /repository must be in owner\/repo form/);
-  assert.match(githubAppSource, /config\.githubOwner/);
-  assert.match(mcpSource, /Onestepsmarter\/oss-lms/);
-  assert.match(mcpSource, /Crown384\/pamaos-next/);
+  assert.match(githubAppSource, /REPOSITORY_PATTERN\.test\(trimmed\)/);
+  assert.equal(githubAppSource.includes("config.githubOwner"), false);
+  assert.match(mcpSource, /Bare repository names are invalid/);
+  assert.match(mcpSource, /Onestepsmarter\/afri_cart/);
+  assert.match(mcpSource, /const REPOSITORY_PATTERN = \/\^\[A-Za-z0-9_\.\-\]\+\\\/\[A-Za-z0-9_\.\-\]\+\$\//);
 });
 
 test("production Daytona API retries transient safe requests ten times", () => {
@@ -161,6 +168,7 @@ test("runner validates the selected working directory stays in the repo", () => 
 
 test("MCP schemas expose owner/repo, command, and path on fresh and rerun cycles", () => {
   assert.match(mcpSource, /owner\/repo form/);
+  assert.match(mcpSource, /Bare repository names are invalid/);
   assert.match(mcpSource, /const COMMAND_PROPERTIES/);
   assert.match(mcpSource, /command:/);
   assert.match(mcpSource, /path:/);
