@@ -1,0 +1,187 @@
+import { getConfig } from "./config";
+
+const GITHUB_API = "https://api.github.com";
+const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const TOKEN_CACHE_SKEW_MS = 5 * 60 * 1000;
+
+type JsonRecord = Record<string, unknown>;
+type CachedToken = Readonly<{ token: string; expiresAt: number }>;
+
+const installationTokenCache = new Map<number, CachedToken>();
+let importedPrivateKey: Promise<CryptoKey> | undefined;
+
+export type RepositoryCredentials = Readonly<{
+  repository: string;
+  owner: string;
+  token: string;
+  username: string;
+  identityName: string;
+  identityEmail: string;
+}>;
+
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function bytesFromBase64(value: string): Uint8Array {
+  const binary = atob(value.replace(/\s+/g, ""));
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+function base64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]);
+  return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+function base64UrlJson(value: unknown): string {
+  return base64Url(new TextEncoder().encode(JSON.stringify(value)));
+}
+
+function privateKeyDer(base64WrappedPem: string): Uint8Array {
+  const pem = new TextDecoder().decode(bytesFromBase64(base64WrappedPem));
+  const body = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replace(/\s+/g, "");
+  if (!body || body === pem.replace(/\s+/g, "")) {
+    throw new Error("GITHUB_APP_PRIVATE_KEY_BASE64 did not decode to a PKCS#8 PEM private key");
+  }
+  return bytesFromBase64(body);
+}
+
+async function appPrivateKey(): Promise<CryptoKey> {
+  if (importedPrivateKey) return importedPrivateKey;
+  const config = getConfig();
+  if (!config.githubAppPrivateKeyBase64) throw new Error("GitHub App private key is not configured");
+  importedPrivateKey = crypto.subtle.importKey(
+    "pkcs8",
+    privateKeyDer(config.githubAppPrivateKeyBase64),
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return importedPrivateKey;
+}
+
+async function appJwt(): Promise<string> {
+  const config = getConfig();
+  if (!config.githubAppId) throw new Error("GitHub App ID is not configured");
+
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64UrlJson({ alg: "RS256", typ: "JWT" });
+  const payload = base64UrlJson({ iat: now - 60, exp: now + 9 * 60, iss: config.githubAppId });
+  const unsigned = `${header}.${payload}`;
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    await appPrivateKey(),
+    new TextEncoder().encode(unsigned),
+  );
+  return `${unsigned}.${base64Url(new Uint8Array(signature))}`;
+}
+
+async function githubJson(path: string, token: string, init: RequestInit = {}): Promise<unknown> {
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  headers.set("Accept", "application/vnd.github+json");
+  headers.set("X-GitHub-Api-Version", "2022-11-28");
+  headers.set("User-Agent", "mcp-daytona");
+
+  const response = await fetch(`${GITHUB_API}${path}`, { ...init, headers });
+  const text = await response.text();
+  if (!response.ok) {
+    throw new Error(`GitHub App request ${path} failed (${response.status}): ${text.slice(0, 1000)}`);
+  }
+  return text ? JSON.parse(text) : {};
+}
+
+export function normalizeRepository(repository: string): string {
+  const trimmed = repository.trim();
+  if (REPOSITORY_PATTERN.test(trimmed)) return trimmed;
+
+  const config = getConfig();
+  if (config.githubOwner && /^[A-Za-z0-9_.-]+$/.test(trimmed)) {
+    return `${config.githubOwner}/${trimmed}`;
+  }
+
+  throw new Error("repository must be in owner/repo form");
+}
+
+function splitRepository(repository: string): { owner: string; name: string } {
+  const normalized = normalizeRepository(repository);
+  const separator = normalized.indexOf("/");
+  return { owner: normalized.slice(0, separator), name: normalized.slice(separator + 1) };
+}
+
+async function installationIdForRepository(repository: string, jwt: string): Promise<number> {
+  const { owner, name } = splitRepository(repository);
+  const value = await githubJson(
+    `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/installation`,
+    jwt,
+  );
+  if (!isRecord(value) || typeof value.id !== "number") {
+    throw new Error(`GitHub App installation lookup for ${repository} did not return an installation id`);
+  }
+  return value.id;
+}
+
+async function installationToken(installationId: number, jwt: string): Promise<string> {
+  const cached = installationTokenCache.get(installationId);
+  if (cached && cached.expiresAt - TOKEN_CACHE_SKEW_MS > Date.now()) return cached.token;
+
+  const value = await githubJson(`/app/installations/${installationId}/access_tokens`, jwt, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  if (!isRecord(value) || typeof value.token !== "string" || typeof value.expires_at !== "string") {
+    throw new Error(`GitHub App installation ${installationId} did not return a usable access token`);
+  }
+
+  const expiresAt = Date.parse(value.expires_at);
+  if (!Number.isFinite(expiresAt)) throw new Error("GitHub App installation token expiry is invalid");
+  installationTokenCache.set(installationId, { token: value.token, expiresAt });
+  return value.token;
+}
+
+async function appCredentials(repository: string): Promise<RepositoryCredentials> {
+  const normalized = normalizeRepository(repository);
+  const { owner } = splitRepository(normalized);
+  const jwt = await appJwt();
+  const installationId = await installationIdForRepository(normalized, jwt);
+  const token = await installationToken(installationId, jwt);
+  return {
+    repository: normalized,
+    owner,
+    token,
+    username: "x-access-token",
+    identityName: "Daytona MCP",
+    identityEmail: "daytona-mcp@users.noreply.github.com",
+  };
+}
+
+function legacyCredentials(repository: string): RepositoryCredentials {
+  const config = getConfig();
+  if (!config.githubToken || !config.githubOwner) throw new Error("Legacy GitHub PAT credentials are not configured");
+  const normalized = normalizeRepository(repository);
+  const { owner } = splitRepository(normalized);
+  if (owner.toLowerCase() !== config.githubOwner.toLowerCase()) {
+    throw new Error(`Legacy GitHub token is scoped to ${config.githubOwner}; cannot access ${normalized}`);
+  }
+  return {
+    repository: normalized,
+    owner,
+    token: config.githubToken,
+    username: config.githubOwner,
+    identityName: config.githubOwner,
+    identityEmail: `${config.githubOwner}@users.noreply.github.com`,
+  };
+}
+
+export async function getRepositoryCredentials(repository: string): Promise<RepositoryCredentials> {
+  const config = getConfig();
+  if (config.githubAppId && config.githubAppPrivateKeyBase64) return appCredentials(repository);
+  return legacyCredentials(repository);
+}
