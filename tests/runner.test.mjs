@@ -212,7 +212,7 @@ test("custom terminal commands may leave working-tree changes without forced fai
 
 test("live smoke validates GitHub App access across Crown384 and Onestepsmarter", () => {
   assert.match(smokeSource, /const REPOSITORY = "Crown384\/pamaos-next"/);
-  assert.match(smokeSource, /const SECONDARY_REPOSITORY = "Onestepsmarter\/oss-lms"/);
+  assert.match(smokeSource, /const SECONDARY_REPOSITORY = "Onestepsmarter\/afri_cart"/);
   assert.match(smokeSource, /GITHUB_APP_ID/);
   assert.match(smokeSource, /GITHUB_APP_PRIVATE_KEY_BASE64/);
   assert.match(smokeSource, /assertRepositoryAccess\(REPOSITORY\)/);
