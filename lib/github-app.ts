@@ -154,14 +154,10 @@ async function githubJson(path: string, token: string, init: RequestInit = {}): 
 
 export function normalizeRepository(repository: string): string {
   const trimmed = repository.trim();
-  if (REPOSITORY_PATTERN.test(trimmed)) return trimmed;
-
-  const config = getConfig();
-  if (config.githubOwner && /^[A-Za-z0-9_.-]+$/.test(trimmed)) {
-    return `${config.githubOwner}/${trimmed}`;
+  if (!REPOSITORY_PATTERN.test(trimmed)) {
+    throw new Error("repository must be in owner/repo form");
   }
-
-  throw new Error("repository must be in owner/repo form");
+  return trimmed;
 }
 
 function splitRepository(repository: string): { owner: string; name: string } {
@@ -222,26 +218,6 @@ async function appCredentials(repository: string): Promise<RepositoryCredentials
   };
 }
 
-function legacyCredentials(repository: string): RepositoryCredentials {
-  const config = getConfig();
-  if (!config.githubToken || !config.githubOwner) throw new Error("Legacy GitHub PAT credentials are not configured");
-  const normalized = normalizeRepository(repository);
-  const { owner } = splitRepository(normalized);
-  if (owner.toLowerCase() !== config.githubOwner.toLowerCase()) {
-    throw new Error(`Legacy GitHub token is scoped to ${config.githubOwner}; cannot access ${normalized}`);
-  }
-  return {
-    repository: normalized,
-    owner,
-    token: config.githubToken,
-    username: config.githubOwner,
-    identityName: config.githubOwner,
-    identityEmail: `${config.githubOwner}@users.noreply.github.com`,
-  };
-}
-
 export async function getRepositoryCredentials(repository: string): Promise<RepositoryCredentials> {
-  const config = getConfig();
-  if (config.githubAppId && config.githubAppPrivateKeyBase64) return appCredentials(repository);
-  return legacyCredentials(repository);
+  return appCredentials(repository);
 }
