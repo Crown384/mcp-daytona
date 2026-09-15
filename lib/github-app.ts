@@ -7,7 +7,7 @@ const TOKEN_CACHE_SKEW_MS = 5 * 60 * 1000;
 type JsonRecord = Record<string, unknown>;
 type CachedToken = Readonly<{ token: string; expiresAt: number }>;
 
-const installationTokenCache = new Map<number, CachedToken>();
+const installationTokenCache = new Map<string, CachedToken>();
 let importedPrivateKey: Promise<CryptoKey> | undefined;
 
 export type RepositoryCredentials = Readonly<{
@@ -176,14 +176,19 @@ async function installationIdForRepository(repository: string, jwt: string): Pro
   return value.id;
 }
 
-async function installationToken(installationId: number, jwt: string): Promise<string> {
-  const cached = installationTokenCache.get(installationId);
+async function installationToken(
+  installationId: number,
+  repository: string,
+  repositoryName: string,
+  jwt: string,
+): Promise<string> {
+  const cached = installationTokenCache.get(repository);
   if (cached && cached.expiresAt - TOKEN_CACHE_SKEW_MS > Date.now()) return cached.token;
 
   const value = await githubJson(`/app/installations/${installationId}/access_tokens`, jwt, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ repositories: [repositoryName] }),
   });
   if (!isRecord(value) || typeof value.token !== "string" || typeof value.expires_at !== "string") {
     throw new Error(`GitHub App installation ${installationId} did not return a usable access token`);
@@ -191,16 +196,16 @@ async function installationToken(installationId: number, jwt: string): Promise<s
 
   const expiresAt = Date.parse(value.expires_at);
   if (!Number.isFinite(expiresAt)) throw new Error("GitHub App installation token expiry is invalid");
-  installationTokenCache.set(installationId, { token: value.token, expiresAt });
+  installationTokenCache.set(repository, { token: value.token, expiresAt });
   return value.token;
 }
 
 async function appCredentials(repository: string): Promise<RepositoryCredentials> {
   const normalized = normalizeRepository(repository);
-  const { owner } = splitRepository(normalized);
+  const { owner, name } = splitRepository(normalized);
   const jwt = await appJwt();
   const installationId = await installationIdForRepository(normalized, jwt);
-  const token = await installationToken(installationId, jwt);
+  const token = await installationToken(installationId, normalized, name, jwt);
   return {
     repository: normalized,
     owner,
