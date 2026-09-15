@@ -1,8 +1,8 @@
 MCP Daytona validation
-Started: 2026-08-21T10:33:38.471Z
+Started: 2026-09-15T11:34:58.677Z
 ========================================================================================
 PRE-FLIGHT
-PASS  Git head — a6dfc05a0eda581fa725ed18bdeab97206dabb03
+PASS  Git head — d65ed146193fe213200a1e7cdca4c5d1563ab9ff
 PASS  Git branch — main
 PASS  Git working tree — clean
 PASS  Runner template sanity check — shell expansion, escaping, and read-only policy look valid
@@ -12,12 +12,161 @@ INSTALL DEPENDENCIES
 pnpm install --no-frozen-lockfile --reporter=append-only
 ----------------------------------------------------------------------------------------
 Lockfile is up to date, resolution step is skipped
+Packages: +630
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Progress: resolved 0, reused 1, downloaded 0, added 0
-Progress: resolved 0, reused 18, downloaded 0, added 0
-Progress: resolved 0, reused 52, downloaded 0, added 0
-Packages: -168
---------------------------------------------------------------------------------
-Progress: resolved 0, reused 167, downloaded 0, added 0, done
+Progress: resolved 0, reused 33, downloaded 0, added 0
+Progress: resolved 0, reused 89, downloaded 0, added 0
+Progress: resolved 0, reused 145, downloaded 0, added 0
+Progress: resolved 0, reused 199, downloaded 0, added 0
+Progress: resolved 0, reused 295, downloaded 0, added 0
+Progress: resolved 0, reused 378, downloaded 0, added 0
+Progress: resolved 0, reused 458, downloaded 0, added 0
+Progress: resolved 0, reused 458, downloaded 0, added 2
+Progress: resolved 0, reused 458, downloaded 7, added 2
+Progress: resolved 0, reused 458, downloaded 10, added 3
+ WARN  Tarball download average speed 12 KiB/s (size 20 KiB) is below 50 KiB/s: https://registry.npmjs.org/undici-types/-/undici-types-6.21.0.tgz (GET)
+Progress: resolved 0, reused 458, downloaded 12, added 3
+Progress: resolved 0, reused 458, downloaded 13, added 3
+Progress: resolved 0, reused 458, downloaded 13, added 4
+Progress: resolved 0, reused 458, downloaded 17, added 5
+Progress: resolved 0, reused 458, downloaded 21, added 7
+Progress: resolved 0, reused 458, downloaded 22, added 7
+Progress: resolved 0, reused 458, downloaded 23, added 7
+Progress: resolved 0, reused 458, downloaded 25, added 7
+Progress: resolved 0, reused 458, downloaded 28, added 8
+Progress: resolved 0, reused 458, downloaded 29, added 8
+Progress: resolved 0, reused 458, downloaded 30, added 8
+Progress: resolved 0, reused 458, downloaded 31, added 8
+Progress: resolved 0, reused 458, downloaded 32, added 8
+Progress: resolved 0, reused 458, downloaded 33, added 9
+Progress: resolved 0, reused 458, downloaded 36, added 10
+Progress: resolved 0, reused 458, downloaded 41, added 12
+Progress: resolved 0, reused 458, downloaded 43, added 12
+Progress: resolved 0, reused 458, downloaded 44, added 13
+Progress: resolved 0, reused 458, downloaded 47, added 13
+Progress: resolved 0, reused 458, downloaded 49, added 14
+Progress: resolved 0, reused 458, downloaded 51, added 15
+Progress: resolved 0, reused 458, downloaded 52, added 16
+Progress: resolved 0, reused 458, downloaded 53, added 16
+Progress: resolved 0, reused 459, downloaded 53, added 16
+Progress: resolved 0, reused 459, downloaded 57, added 17
+Progress: resolved 0, reused 459, downloaded 60, added 18
+Progress: resolved 0, reused 459, downloaded 64, added 20
+ WARN  Tarball download average speed 8 KiB/s (size 11 KiB) is below 50 KiB/s: https://registry.npmjs.org/@smithy/fetch-http-handler/-/fetch-http-handler-5.7.2.tgz (GET)
+Progress: resolved 0, reused 459, downloaded 67, added 24
+Progress: resolved 0, reused 459, downloaded 68, added 26
+ WARN  Tarball download average speed 2 KiB/s (size 5 KiB) is below 50 KiB/s: https://registry.npmjs.org/@smithy/middleware-stack/-/middleware-stack-4.5.2.tgz (GET)
+ WARN  Tarball download average speed 2 KiB/s (size 5 KiB) is below 50 KiB/s: https://registry.npmjs.org/@smithy/middleware-serde/-/middleware-serde-4.5.2.tgz (GET)
+Progress: resolved 0, reused 459, downloaded 71, added 28
+Progress: resolved 0, reused 459, downloaded 72, added 30
+Progress: resolved 0, reused 459, downloaded 73, added 30
+Progress: resolved 0, reused 459, downloaded 74, added 30
+Progress: resolved 0, reused 459, downloaded 75, added 31
+Progress: resolved 0, reused 459, downloaded 81, added 33
+ WARN  Tarball download average speed 5 KiB/s (size 5 KiB) is below 50 KiB/s: https://registry.npmjs.org/@smithy/util-middleware/-/util-middleware-4.5.2.tgz (GET)
+Progress: resolved 0, reused 459, downloaded 87, added 36
+ WARN  Tarball download average speed 5 KiB/s (size 5 KiB) is below 50 KiB/s: https://registry.npmjs.org/@smithy/util-utf8/-/util-utf8-4.5.2.tgz (GET)
+ WARN  Tarball download average speed 3 KiB/s (size 5 KiB) is below 50 KiB/s: https://registry.npmjs.org/@smithy/util-stream/-/util-stream-4.8.2.tgz (GET)
+Progress: resolved 0, reused 459, downloaded 93, added 41
+Progress: resolved 0, reused 459, downloaded 98, added 45
+ WARN  Tarball download average speed 3 KiB/s (size 5 KiB) is below 50 KiB/s: https://registry.npmjs.org/@smithy/hash-stream-node/-/hash-stream-node-4.5.2.tgz (GET)
+Progress: resolved 0, reused 459, downloaded 101, added 53
+ WARN  Tarball download average speed 11 KiB/s (size 20 KiB) is below 50 KiB/s: https://registry.npmjs.org/@smithy/signature-v4/-/signature-v4-5.7.3.tgz (GET)
+ WARN  Tarball download average speed 2 KiB/s (size 5 KiB) is below 50 KiB/s: https://registry.npmjs.org/@smithy/md5-js/-/md5-js-4.5.2.tgz (GET)
+ WARN  Tarball download average speed 3 KiB/s (size 7 KiB) is below 50 KiB/s: https://registry.npmjs.org/@aws-sdk/middleware-sdk-sqs/-/middleware-sdk-sqs-3.972.41.tgz (GET)
+ WARN  Tarball download average speed 2 KiB/s (size 8 KiB) is below 50 KiB/s: https://registry.npmjs.org/@aws-sdk/middleware-endpoint-discovery/-/middleware-endpoint-discovery-3.972.29.tgz (GET)
+Progress: resolved 0, reused 459, downloaded 102, added 61
+ WARN  Tarball download average speed 1 KiB/s (size 5 KiB) is below 50 KiB/s: https://registry.npmjs.org/@smithy/hash-blob-browser/-/hash-blob-browser-4.5.2.tgz (GET)
+ WARN  Tarball download average speed 1 KiB/s (size 5 KiB) is below 50 KiB/s: https://registry.npmjs.org/@aws-sdk/middleware-flexible-checksums/-/middleware-flexible-checksums-3.974.53.tgz (GET)
+ WARN  Tarball download average speed 1 KiB/s (size 4 KiB) is below 50 KiB/s: https://registry.npmjs.org/@aws-sdk/middleware-expect-continue/-/middleware-expect-continue-3.972.43.tgz (GET)
+Progress: resolved 0, reused 459, downloaded 105, added 61
+Progress: resolved 0, reused 459, downloaded 107, added 63
+Progress: resolved 0, reused 459, downloaded 107, added 64
+Progress: resolved 0, reused 459, downloaded 109, added 64
+ WARN  Tarball download average speed 16 KiB/s (size 369 KiB) is below 50 KiB/s: https://registry.npmjs.org/@smithy/core/-/core-3.33.3.tgz (GET)
+Progress: resolved 0, reused 459, downloaded 113, added 64
+Progress: resolved 0, reused 459, downloaded 114, added 65
+Progress: resolved 0, reused 459, downloaded 118, added 66
+ WARN  Tarball download average speed 4 KiB/s (size 5 KiB) is below 50 KiB/s: https://registry.npmjs.org/@aws-sdk/util-locate-window/-/util-locate-window-3.965.10.tgz (GET)
+Progress: resolved 0, reused 459, downloaded 119, added 67
+Progress: resolved 0, reused 459, downloaded 120, added 67
+Progress: resolved 0, reused 459, downloaded 122, added 67
+Progress: resolved 0, reused 459, downloaded 125, added 67
+Progress: resolved 0, reused 459, downloaded 126, added 67
+Progress: resolved 0, reused 459, downloaded 127, added 67
+Progress: resolved 0, reused 459, downloaded 128, added 68
+Progress: resolved 0, reused 459, downloaded 129, added 70
+Progress: resolved 0, reused 459, downloaded 131, added 71
+Progress: resolved 0, reused 459, downloaded 136, added 71
+ WARN  Tarball download average speed 42 KiB/s (size 88 KiB) is below 50 KiB/s: https://registry.npmjs.org/@aws-sdk/nested-clients/-/nested-clients-3.997.43.tgz (GET)
+Progress: resolved 0, reused 459, downloaded 137, added 71
+Progress: resolved 0, reused 459, downloaded 141, added 73
+Progress: resolved 0, reused 459, downloaded 142, added 73
+ WARN  Tarball download average speed 13 KiB/s (size 194 KiB) is below 50 KiB/s: https://registry.npmjs.org/language-subtag-registry/-/language-subtag-registry-0.3.23.tgz (GET)
+Progress: resolved 0, reused 459, downloaded 142, added 74
+Progress: resolved 0, reused 459, downloaded 143, added 74
+Progress: resolved 0, reused 459, downloaded 148, added 74
+Progress: resolved 0, reused 459, downloaded 151, added 74
+Progress: resolved 0, reused 459, downloaded 152, added 76
+Progress: resolved 0, reused 459, downloaded 154, added 76
+Progress: resolved 0, reused 459, downloaded 156, added 81
+Progress: resolved 0, reused 459, downloaded 156, added 88
+Progress: resolved 0, reused 459, downloaded 157, added 100
+Progress: resolved 0, reused 459, downloaded 157, added 105
+Progress: resolved 0, reused 459, downloaded 157, added 120
+Progress: resolved 0, reused 459, downloaded 157, added 138
+Progress: resolved 0, reused 459, downloaded 157, added 143
+Progress: resolved 0, reused 459, downloaded 157, added 147
+Progress: resolved 0, reused 459, downloaded 157, added 152
+Progress: resolved 0, reused 459, downloaded 157, added 153
+Progress: resolved 0, reused 459, downloaded 157, added 155
+Progress: resolved 0, reused 459, downloaded 158, added 163
+Progress: resolved 0, reused 459, downloaded 158, added 165
+Progress: resolved 0, reused 459, downloaded 158, added 176
+Progress: resolved 0, reused 459, downloaded 158, added 180
+Progress: resolved 0, reused 459, downloaded 158, added 184
+Progress: resolved 0, reused 459, downloaded 158, added 208
+Progress: resolved 0, reused 459, downloaded 158, added 225
+Progress: resolved 0, reused 459, downloaded 158, added 238
+Progress: resolved 0, reused 459, downloaded 158, added 257
+Progress: resolved 0, reused 459, downloaded 158, added 265
+Progress: resolved 0, reused 459, downloaded 158, added 279
+Progress: resolved 0, reused 459, downloaded 158, added 299
+Progress: resolved 0, reused 459, downloaded 158, added 334
+Progress: resolved 0, reused 459, downloaded 158, added 351
+Progress: resolved 0, reused 459, downloaded 158, added 372
+Progress: resolved 0, reused 459, downloaded 158, added 393
+Progress: resolved 0, reused 459, downloaded 158, added 412
+Progress: resolved 0, reused 459, downloaded 158, added 425
+Progress: resolved 0, reused 459, downloaded 159, added 434
+Progress: resolved 0, reused 459, downloaded 159, added 445
+Progress: resolved 0, reused 459, downloaded 159, added 456
+Progress: resolved 0, reused 459, downloaded 159, added 475
+Progress: resolved 0, reused 459, downloaded 159, added 481
+Progress: resolved 0, reused 459, downloaded 159, added 484
+Progress: resolved 0, reused 459, downloaded 159, added 497
+Progress: resolved 0, reused 459, downloaded 159, added 502
+Progress: resolved 0, reused 459, downloaded 159, added 517
+Progress: resolved 0, reused 459, downloaded 159, added 530
+Progress: resolved 0, reused 459, downloaded 159, added 543
+Progress: resolved 0, reused 459, downloaded 159, added 548
+Progress: resolved 0, reused 459, downloaded 159, added 557
+Progress: resolved 0, reused 459, downloaded 159, added 559
+Progress: resolved 0, reused 459, downloaded 159, added 566
+Progress: resolved 0, reused 459, downloaded 159, added 581
+Progress: resolved 0, reused 459, downloaded 159, added 590
+Progress: resolved 0, reused 459, downloaded 159, added 594
+Progress: resolved 0, reused 459, downloaded 159, added 604
+Progress: resolved 0, reused 459, downloaded 159, added 614
+Progress: resolved 0, reused 459, downloaded 159, added 624
+Progress: resolved 0, reused 459, downloaded 159, added 625
+Progress: resolved 0, reused 459, downloaded 159, added 626
+Progress: resolved 0, reused 459, downloaded 159, added 627
+Progress: resolved 0, reused 459, downloaded 159, added 629
+Progress: resolved 0, reused 459, downloaded 160, added 629
+Progress: resolved 0, reused 459, downloaded 160, added 630
+Progress: resolved 0, reused 459, downloaded 160, added 630, done
 
 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
 │                                                                              │
@@ -27,9 +176,9 @@ Progress: resolved 0, reused 167, downloaded 0, added 0, done
 │   to run scripts.                                                            │
 │                                                                              │
 ╰──────────────────────────────────────────────────────────────────────────────╯
-Done in 6.2s using pnpm v10.34.5
+Done in 5m 52s using pnpm v10.34.5
 RESULT: PASS (exit 0)
-DURATION: 6.5s
+DURATION: 352.4s
 PASS  Dependency metadata diff check — lockfile already synchronized
 
 ========================================================================================
@@ -37,93 +186,227 @@ TYPECHECK
 pnpm run typecheck
 ----------------------------------------------------------------------------------------
 
-> mcp-daytona@0.2.0 typecheck C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
+> mcp-daytona@0.2.0 typecheck C:\Users\crown\PAMA\PAMAGlobal\mcp-daytona
 > tsc --noEmit
 
-RESULT: PASS (exit 0)
-DURATION: 7.4s
+lib/github-app.ts(110,5): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'Uint8Array<ArrayBufferLike>' is not assignable to parameter of type 'BufferSource'.
+      Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'ArrayBufferView<ArrayBuffer>'.
+        Types of property 'buffer' are incompatible.
+          Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+            Type 'SharedArrayBuffer' is missing the following properties from type 'ArrayBuffer': resizable, resize, detached, transfer, transferToFixedLength
+ ELIFECYCLE  Command failed with exit code 2.
+RESULT: FAIL (exit 2)
+DURATION: 50.9s
 
 ========================================================================================
 LINT
 pnpm run lint
 ----------------------------------------------------------------------------------------
 
-> mcp-daytona@0.2.0 lint C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
+> mcp-daytona@0.2.0 lint C:\Users\crown\PAMA\PAMAGlobal\mcp-daytona
 > eslint .
 
 RESULT: PASS (exit 0)
-DURATION: 7.9s
+DURATION: 102.0s
 
 ========================================================================================
 TESTS
 pnpm run test
 ----------------------------------------------------------------------------------------
 
-> mcp-daytona@0.2.0 test C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
+> mcp-daytona@0.2.0 test C:\Users\crown\PAMA\PAMAGlobal\mcp-daytona
 > node --test tests/runner.test.mjs
 
-✔ removed repository allowlist cannot regress (3.8516ms)
-✔ Daytona region is not hardcoded (0.5796ms)
-✔ production Daytona API retries transient safe requests ten times (0.7318ms)
-✔ sandbox creation uses one recoverable name across retries (0.6049ms)
-✔ arbitrary command execution is single-shot and never automatically retried (0.3956ms)
-✔ runner raw template does not leak escaped shell parameter expansions (0.307ms)
-✔ runner reads required environment values explicitly (0.417ms)
-✔ runner exposes arbitrary command execution with root path default (0.4284ms)
-✔ arbitrary commands inherit protected Git authentication (0.3814ms)
-✔ runner configures a local Git identity for nested commit scripts (0.524ms)
-✔ runner validates the selected working directory stays in the repo (0.5483ms)
-✔ MCP schemas expose command and path on fresh and rerun cycles (0.6731ms)
-✔ MCP rejects absolute and parent-traversal paths (0.4518ms)
-✔ runner keeps GitHub token secret while Git commands authenticate (2.9546ms)
-✔ runner Git credentials are temporary, cleaned, and use configured owner (0.4676ms)
-✔ runner implementation never pushes source on its own (0.4411ms)
-✔ custom terminal commands may leave working-tree changes without forced failure (0.2912ms)
-✔ live smoke test uses exact runner, authenticated git pull, command, and cleanup (0.3921ms)
-✔ live smoke normalizes Windows line endings before Linux execution (0.2472ms)
-✔ live smoke retries transient network failures ten times (0.4333ms)
-✔ runner Bash syntax is valid when bash is installed (285.993ms)
-ℹ tests 21
-ℹ suites 0
-ℹ pass 21
-ℹ fail 0
-ℹ cancelled 0
-ℹ skipped 0
-ℹ todo 0
-ℹ duration_ms 565.185
+TAP version 13
+# Subtest: removed repository allowlist cannot regress
+ok 1 - removed repository allowlist cannot regress
+  ---
+  duration_ms: 5.0678
+  type: 'test'
+  ...
+# Subtest: Daytona region is not hardcoded
+ok 2 - Daytona region is not hardcoded
+  ---
+  duration_ms: 1.3088
+  type: 'test'
+  ...
+# Subtest: GitHub App credentials are the primary multi-owner auth path
+ok 3 - GitHub App credentials are the primary multi-owner auth path
+  ---
+  duration_ms: 0.8165
+  type: 'test'
+  ...
+# Subtest: GitHub App signs RS256 JWTs and resolves repository installations
+ok 4 - GitHub App signs RS256 JWTs and resolves repository installations
+  ---
+  duration_ms: 0.3993
+  type: 'test'
+  ...
+# Subtest: GitHub App private key supports GitHub RSA PEM and PKCS8 PEM
+ok 5 - GitHub App private key supports GitHub RSA PEM and PKCS8 PEM
+  ---
+  duration_ms: 0.6913
+  type: 'test'
+  ...
+# Subtest: repository normalization supports owner/repo and temporary legacy fallback
+ok 6 - repository normalization supports owner/repo and temporary legacy fallback
+  ---
+  duration_ms: 0.5311
+  type: 'test'
+  ...
+# Subtest: production Daytona API retries transient safe requests ten times
+ok 7 - production Daytona API retries transient safe requests ten times
+  ---
+  duration_ms: 0.7955
+  type: 'test'
+  ...
+# Subtest: sandbox creation uses one recoverable name across retries
+ok 8 - sandbox creation uses one recoverable name across retries
+  ---
+  duration_ms: 0.464
+  type: 'test'
+  ...
+# Subtest: Daytona resolves GitHub credentials before creating a fresh sandbox
+ok 9 - Daytona resolves GitHub credentials before creating a fresh sandbox
+  ---
+  duration_ms: 1.3144
+  type: 'test'
+  ...
+# Subtest: arbitrary command execution is single-shot and never automatically retried
+ok 10 - arbitrary command execution is single-shot and never automatically retried
+  ---
+  duration_ms: 1.521
+  type: 'test'
+  ...
+# Subtest: runner raw template does not leak escaped shell parameter expansions
+ok 11 - runner raw template does not leak escaped shell parameter expansions
+  ---
+  duration_ms: 0.5013
+  type: 'test'
+  ...
+# Subtest: runner reads required environment values explicitly
+ok 12 - runner reads required environment values explicitly
+  ---
+  duration_ms: 0.3029
+  type: 'test'
+  ...
+# Subtest: runner is owner agnostic and clones full owner/repo remotes
+ok 13 - runner is owner agnostic and clones full owner/repo remotes
+  ---
+  duration_ms: 0.2645
+  type: 'test'
+  ...
+# Subtest: runner preserves compatibility with old persistent checkout context
+ok 14 - runner preserves compatibility with old persistent checkout context
+  ---
+  duration_ms: 0.1931
+  type: 'test'
+  ...
+# Subtest: runner exposes arbitrary command execution with root path default
+ok 15 - runner exposes arbitrary command execution with root path default
+  ---
+  duration_ms: 0.272
+  type: 'test'
+  ...
+# Subtest: arbitrary commands inherit protected Git authentication
+ok 16 - arbitrary commands inherit protected Git authentication
+  ---
+  duration_ms: 0.1735
+  type: 'test'
+  ...
+# Subtest: runner configures a local Git identity for nested commit scripts
+ok 17 - runner configures a local Git identity for nested commit scripts
+  ---
+  duration_ms: 0.5051
+  type: 'test'
+  ...
+# Subtest: runner validates the selected working directory stays in the repo
+ok 18 - runner validates the selected working directory stays in the repo
+  ---
+  duration_ms: 0.5322
+  type: 'test'
+  ...
+# Subtest: MCP schemas expose owner/repo, command, and path on fresh and rerun cycles
+ok 19 - MCP schemas expose owner/repo, command, and path on fresh and rerun cycles
+  ---
+  duration_ms: 0.4294
+  type: 'test'
+  ...
+# Subtest: MCP rejects absolute and parent-traversal paths
+ok 20 - MCP rejects absolute and parent-traversal paths
+  ---
+  duration_ms: 0.3524
+  type: 'test'
+  ...
+# Subtest: runner keeps GitHub token secret while Git commands authenticate
+ok 21 - runner keeps GitHub token secret while Git commands authenticate
+  ---
+  duration_ms: 0.4975
+  type: 'test'
+  ...
+# Subtest: runner Git credentials are temporary, cleaned, and use supplied username
+ok 22 - runner Git credentials are temporary, cleaned, and use supplied username
+  ---
+  duration_ms: 0.4201
+  type: 'test'
+  ...
+# Subtest: runner implementation never pushes source on its own
+ok 23 - runner implementation never pushes source on its own
+  ---
+  duration_ms: 0.5501
+  type: 'test'
+  ...
+# Subtest: custom terminal commands may leave working-tree changes without forced failure
+ok 24 - custom terminal commands may leave working-tree changes without forced failure
+  ---
+  duration_ms: 0.2627
+  type: 'test'
+  ...
+# Subtest: live smoke validates GitHub App access across Crown384 and Onestepsmarter
+ok 25 - live smoke validates GitHub App access across Crown384 and Onestepsmarter
+  ---
+  duration_ms: 0.2396
+  type: 'test'
+  ...
+# Subtest: live smoke test uses exact runner, authenticated git pull, command, and cleanup
+ok 26 - live smoke test uses exact runner, authenticated git pull, command, and cleanup
+  ---
+  duration_ms: 0.4335
+  type: 'test'
+  ...
+# Subtest: live smoke normalizes Windows line endings before Linux execution
+ok 27 - live smoke normalizes Windows line endings before Linux execution
+  ---
+  duration_ms: 0.1827
+  type: 'test'
+  ...
+# Subtest: live smoke retries transient network failures ten times
+ok 28 - live smoke retries transient network failures ten times
+  ---
+  duration_ms: 0.1728
+  type: 'test'
+  ...
+# Subtest: runner Bash syntax is valid when bash is installed
+ok 29 - runner Bash syntax is valid when bash is installed
+  ---
+  duration_ms: 265.5176
+  type: 'test'
+  ...
+1..29
+# tests 29
+# suites 0
+# pass 29
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 732.8119
 RESULT: PASS (exit 0)
-DURATION: 2.2s
+DURATION: 2.7s
 
-========================================================================================
-DAYTONA LIVE CLONE SMOKE
-node --env-file=.env.local scripts/daytona-smoke.mjs
-----------------------------------------------------------------------------------------
-Creating Daytona smoke-test sandbox (daytona-small)...
-SANDBOX_ID=81ac7676-1083-4828-b31b-41227d65c95e
-Cloning into '/home/daytona/workspace/repo'...
-Daytona cycle: Crown384/pamaos-next @ main
-Checked out: 25ebb3684ece8c78c7672605f39cbf0ce96b0ca4
-
-== custom command ==
-path=.
-command=git pull --ff-only origin main; printf 'SMOKE_PULL=ok\n'; printf 'SMOKE_PWD=%s\n' "$PWD"; printf 'SMOKE_BRANCH=%s\n' "$(git branch --show-current)"; printf 'SMOKE_HEAD=%s\n' "$(git rev-parse HEAD)"
-From https://github.com/Crown384/pamaos-next
- * branch              main       -> FETCH_HEAD
-Already up to date.
-SMOKE_PULL=ok
-SMOKE_PWD=/home/daytona/workspace/repo
-SMOKE_BRANCH=main
-SMOKE_HEAD=25ebb3684ece8c78c7672605f39cbf0ce96b0ca4
-
-== git status ==
-clean
-
-== cycle result ==
-exit_code=0
-PASS runner cloned Crown384/pamaos-next@main, authenticated git pull, and executed a root command
-SANDBOX_DESTROYED=81ac7676-1083-4828-b31b-41227d65c95e
-RESULT: PASS (exit 0)
-DURATION: 25.3s
+SKIP  Daytona live clone smoke — local code checks failed; no sandbox was created
 
 SKIP  Fallow audit — Fallow is not configured in this repository
 
@@ -132,7 +415,7 @@ CLOUDFLARE PRODUCTION BUILD
 pnpm run cf:build
 ----------------------------------------------------------------------------------------
 
-> mcp-daytona@0.2.0 cf:build C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
+> mcp-daytona@0.2.0 cf:build C:\Users\crown\PAMA\PAMAGlobal\mcp-daytona
 > opennextjs-cloudflare build
 
 
@@ -143,7 +426,7 @@ pnpm run cf:build
 WARN OpenNext is not fully compatible with Windows.
 WARN For optimal performance, it is recommended to use Windows Subsystem for Linux (WSL).
 WARN While OpenNext may function on Windows, it could encounter unpredictable failures during runtime.
-App directory: C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
+App directory: C:\Users\crown\PAMA\PAMAGlobal\mcp-daytona
 Next.js version : 16.3.1
 @opennextjs/cloudflare version: 1.20.2
 @opennextjs/aws version: 4.1.0
@@ -154,54 +437,50 @@ workerd compatibility_date: 2026-08-21
 └─────────────────────────────────┘
 
 
-> mcp-daytona@0.2.0 build C:\Users\crown\PAMA\PAMAGlobal\MCPs\daytona
+> mcp-daytona@0.2.0 build C:\Users\crown\PAMA\PAMAGlobal\mcp-daytona
 > next build
 
 ▲ Next.js 16.3.1 (Turbopack)
-- Environments: .env.local, .env
-✓ Running next.config.ts took 140ms
+- Environments: .env.local
+✓ Running next.config.ts took 1250ms
 
   Creating an optimized production build ...
-✓ Compiled successfully in 1547ms
+✓ Compiled successfully in 31.2s
   Running TypeScript ...
-  Finished TypeScript in 7.6s ...
-  Collecting page data using 6 workers ...
-  Generating static pages using 6 workers (0/5) ...
-  Generating static pages using 6 workers (1/5) 
-  Generating static pages using 6 workers (2/5) 
-  Generating static pages using 6 workers (3/5) 
-✓ Generating static pages using 6 workers (5/5) in 1388ms
-  Finalizing page optimization ...
+lib/github-app.ts(110,5): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'Uint8Array<ArrayBufferLike>' is not assignable to parameter of type 'BufferSource'.
+      Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'ArrayBufferView<ArrayBuffer>'.
+        Types of property 'buffer' are incompatible.
+          Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+            Type 'SharedArrayBuffer' is missing the following properties from type 'ArrayBuffer': resizable, resize, detached, transfer, transferToFixedLength
+Failed to type check.
 
-Route (app)
-┌ ○ /
-├ ○ /_not-found
-└ ƒ /mcp
+ ELIFECYCLE  Command failed with exit code 1.
+node:internal/errors:983
+  const err = new Error(message);
+              ^
 
+Error: Command failed: pnpm build
+    at genericNodeError (node:internal/errors:983:15)
+    at wrappedFn (node:internal/errors:537:14)
+    at checkExecSyncError (node:child_process:916:11)
+    at Object.execSync (node:child_process:988:15)
+    at buildNextjsApp (file:///C:/Users/crown/PAMA/PAMAGlobal/mcp-daytona/node_modules/@opennextjs/aws/dist/build/buildNextApp.js:15:8)
+    at build (file:///C:/Users/crown/PAMA/PAMAGlobal/mcp-daytona/node_modules/@opennextjs/cloudflare/dist/cli/build/build.js:63:9)
+    at async buildCommand (file:///C:/Users/crown/PAMA/PAMAGlobal/mcp-daytona/node_modules/@opennextjs/cloudflare/dist/cli/commands/build.js:40:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 30112,
+  stdout: null,
+  stderr: null
+}
 
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
-
-
-┌──────────────────────────────┐
-│ OpenNext — Generating bundle │
-└──────────────────────────────┘
-
-(node:4064) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
-(Use `node --trace-deprecation ...` to show where the warning was created)
-Bundling middleware function...
-Bundling static assets...
-Bundling cache assets...
-Building server function: default...
-Applying code patches: 10.118s
-# copyPackageTemplateFiles
-[35m⚙️ Bundling the OpenNext server...
-[0m
-[35mWorker saved in `.open-next\worker.js` 🚀
-[0m
-OpenNext build complete.
-RESULT: PASS (exit 0)
-DURATION: 46.3s
+Node.js v22.22.0
+ ELIFECYCLE  Command failed with exit code 1.
+RESULT: FAIL (exit 1)
+DURATION: 9775.1s
 PASS  Post-validation Git diff check — only the validation log changed
 
 ========================================================================================
@@ -212,20 +491,20 @@ PASS  Git working tree
 PASS  Runner template sanity check
 PASS  Install dependencies
 PASS  Dependency metadata diff check
-PASS  Typecheck
+FAIL  Typecheck
 PASS  Lint
 PASS  Tests
-PASS  Daytona live clone smoke
+SKIP  Daytona live clone smoke
 SKIP  Fallow audit
-PASS  Cloudflare production build
+FAIL  Cloudflare production build
 PASS  Post-validation Git diff check
 TOTAL: 13
-PASSED: 12
-FAILED: 0
-SKIPPED: 1
-RESULT: PASS (exit 0)
-DURATION: 97.0s
-Completed: 2026-08-21T10:35:15.443Z
+PASSED: 9
+FAILED: 2
+SKIPPED: 2
+RESULT: FAIL (exit 1)
+DURATION: 10283.8s
+Completed: 2026-09-15T14:25:59.155Z
 Log file: mcp-daytona-validation.log
 
 ========================================================================================
