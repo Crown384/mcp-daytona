@@ -5,7 +5,7 @@ const API_URL = (process.env.DAYTONA_API_URL?.trim() || "https://app.daytona.io/
 const TOOLBOX_URL = "https://proxy.app.daytona.io/toolbox";
 const GITHUB_API = "https://api.github.com";
 const REPOSITORY = "Crown384/pamaos-next";
-const SECONDARY_REPOSITORY = "Onestepsmarter/oss-lms";
+const SECONDARY_REPOSITORY = "Onestepsmarter/afri_cart";
 const BRANCH = "main";
 const SNAPSHOT = "daytona-small";
 const FETCH_ATTEMPTS = 10;
@@ -149,7 +149,7 @@ async function installationTokenFor(repository) {
   const tokenResult = await github(`/app/installations/${installation.id}/access_tokens`, jwt, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ repositories: [name] }),
   });
   if (typeof tokenResult?.token !== "string") throw new Error(`No installation token returned for ${repository}`);
   return tokenResult.token;
