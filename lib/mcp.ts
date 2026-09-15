@@ -16,10 +16,10 @@ import {
 const CURRENT_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOL = "2025-11-25";
 const SUPPORTED_PROTOCOLS = [CURRENT_PROTOCOL, LEGACY_PROTOCOL, "2025-06-18", "2025-03-26"] as const;
-const SERVER_INFO = { name: "mcp-daytona", version: "0.4.0" } as const;
+const SERVER_INFO = { name: "mcp-daytona", version: "0.5.0" } as const;
 const SERVER_INSTRUCTIONS =
-  "Use GitHub tools for source edits. run_cycle accepts GitHub repositories in owner/repo form and automatically uses the GitHub App installation for that account or organization. rerun_cycle reuses a persistent checkout. Both accept an optional command and repo-relative path; path defaults to the repository root. When command is omitted, the standard QA runner executes.";
-const REPOSITORY_PATTERN = /^(?:[A-Za-z0-9_.-]+\/)?[A-Za-z0-9_.-]+$/;
+  "Use GitHub tools for source edits. run_cycle requires GitHub repositories in owner/repo form and automatically uses the GitHub App installation for that account or organization. rerun_cycle reuses a persistent checkout. Both accept an optional command and repo-relative path; path defaults to the repository root. When command is omitted, the standard QA runner executes.";
+const REPOSITORY_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const BRANCH_PATTERN = /^[A-Za-z0-9._/-]+$/;
 const SANDBOX_PATTERN = /^[A-Za-z0-9_.-]+$/;
 const MAX_COMMAND_LENGTH = 20_000;
@@ -71,7 +71,8 @@ const RUN_CYCLE_TOOL: Tool = {
     properties: {
       repository: {
         type: "string",
-        description: "GitHub repository in owner/repo form, for example Crown384/pamaos-next or Onestepsmarter/oss-lms. Legacy unqualified names are accepted only while GITHUB_OWNER fallback is configured.",
+        pattern: "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+        description: "Required full GitHub repository in owner/repo form, for example Crown384/pamaos-next or Onestepsmarter/afri_cart. Bare repository names are invalid.",
       },
       branch: { type: "string", default: "main", description: "Existing GitHub branch." },
       ...COMMAND_PROPERTIES,
