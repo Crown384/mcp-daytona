@@ -12,7 +12,7 @@
     "check": "pnpm run typecheck && pnpm run lint && pnpm run test",
     "cf:build": "opennextjs-cloudflare build",
     "validate": "node scripts/validate-and-push.mjs",
-    "deploy": "opennextjs-cloudflare deploy -- --secrets-file .env.local"
+    "deploy": "opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "1.20.2",
