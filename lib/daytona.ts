@@ -1,4 +1,5 @@
 import { getConfig } from "./config";
+import { getRepositoryCredentials, normalizeRepository, type RepositoryCredentials } from "./github-app";
 import { RUNNER_SCRIPT } from "./runner";
 
 const DAYTONA_TOOLBOX_URL = "https://proxy.app.daytona.io/toolbox";
@@ -258,7 +259,7 @@ async function executeRunner(
   sandboxId: string,
   action: "fresh" | "rerun",
   timeoutSeconds: number,
-  repository?: string,
+  credentials: RepositoryCredentials,
   branch?: string,
   syncMode: SyncMode = "reset",
   command?: string,
@@ -267,13 +268,15 @@ async function executeRunner(
   const config = getConfig();
   const encodedScript = btoa(RUNNER_SCRIPT);
   const envs: Record<string, string> = {
-    GITHUB_TOKEN: config.githubToken,
-    GITHUB_OWNER: config.githubOwner,
+    GITHUB_TOKEN: credentials.token,
+    GITHUB_USERNAME: credentials.username,
+    GIT_IDENTITY_NAME: credentials.identityName,
+    GIT_IDENTITY_EMAIL: credentials.identityEmail,
     ACTION: action,
     SYNC_MODE: syncMode,
     WORKING_PATH: workingPath,
   };
-  if (repository) envs.REPOSITORY = repository;
+  if (action === "fresh") envs.REPOSITORY = credentials.repository;
   if (branch) envs.BRANCH = branch;
   if (command) envs.COMMAND = command;
 
@@ -337,7 +340,10 @@ function filterManagedList(value: unknown): unknown {
 }
 
 export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
-  const sandboxId = await createSandbox(input);
+  const repository = normalizeRepository(input.repository);
+  const credentials = await getRepositoryCredentials(repository);
+  const normalizedInput: RunCycleInput = { ...input, repository };
+  const sandboxId = await createSandbox(normalizedInput);
   let execution: { exitCode: number; log: string };
 
   try {
@@ -345,7 +351,7 @@ export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
       sandboxId,
       "fresh",
       input.timeoutSeconds,
-      input.repository,
+      credentials,
       input.branch,
       "reset",
       input.command,
@@ -359,7 +365,7 @@ export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
 
   const lifecycle = await applyAfterRun(sandboxId, input.afterRun);
   return {
-    repository: input.repository,
+    repository,
     branch: input.branch,
     sandboxId,
     exitCode: execution.exitCode,
@@ -372,19 +378,28 @@ export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
 export async function rerunCycle(input: RerunCycleInput): Promise<CycleResult> {
   const sandbox = await getManagedSandboxRaw(input.sandboxId);
   const context = managedContext(sandbox);
+  const credentials = await getRepositoryCredentials(context.repository);
   await ensureStarted(input.sandboxId, sandbox);
   const execution = await executeRunner(
     input.sandboxId,
     "rerun",
     input.timeoutSeconds,
-    undefined,
+    credentials,
     undefined,
     input.syncMode,
     input.command,
     input.workingPath,
   );
   const lifecycle = await applyAfterRun(input.sandboxId, input.afterRun);
-  return { ...context, sandboxId: input.sandboxId, exitCode: execution.exitCode, log: execution.log, afterRun: input.afterRun, ...lifecycle };
+  return {
+    ...context,
+    repository: credentials.repository,
+    sandboxId: input.sandboxId,
+    exitCode: execution.exitCode,
+    log: execution.log,
+    afterRun: input.afterRun,
+    ...lifecycle,
+  };
 }
 
 export async function listManagedSandboxes(): Promise<unknown> {
