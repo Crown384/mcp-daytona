@@ -30,6 +30,12 @@ function bytesFromBase64(value: string): Uint8Array {
   return bytes;
 }
 
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const copy = new Uint8Array(bytes.length);
+  copy.set(bytes);
+  return copy.buffer;
+}
+
 function concatBytes(...parts: Uint8Array[]): Uint8Array {
   const total = parts.reduce((sum, part) => sum + part.length, 0);
   const result = new Uint8Array(total);
@@ -107,7 +113,7 @@ async function appPrivateKey(): Promise<CryptoKey> {
   if (!config.githubAppPrivateKeyBase64) throw new Error("GitHub App private key is not configured");
   importedPrivateKey = crypto.subtle.importKey(
     "pkcs8",
-    privateKeyDer(config.githubAppPrivateKeyBase64),
+    toArrayBuffer(privateKeyDer(config.githubAppPrivateKeyBase64)),
     { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
     false,
     ["sign"],
@@ -126,7 +132,7 @@ async function appJwt(): Promise<string> {
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
     await appPrivateKey(),
-    new TextEncoder().encode(unsigned),
+    toArrayBuffer(new TextEncoder().encode(unsigned)),
   );
   return `${unsigned}.${base64Url(new Uint8Array(signature))}`;
 }
