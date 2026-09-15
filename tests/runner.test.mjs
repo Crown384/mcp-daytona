@@ -6,6 +6,7 @@ import { test } from "node:test";
 
 const runnerSource = readFileSync(resolve("lib/runner.ts"), "utf8");
 const configSource = readFileSync(resolve("lib/config.ts"), "utf8");
+const githubAppSource = readFileSync(resolve("lib/github-app.ts"), "utf8");
 const daytonaSource = readFileSync(resolve("lib/daytona.ts"), "utf8");
 const mcpSource = readFileSync(resolve("lib/mcp.ts"), "utf8");
 const smokeSource = readFileSync(resolve("scripts/daytona-smoke.mjs"), "utf8");
@@ -20,7 +21,7 @@ assert.ok(executeRunnerStart >= 0 && ensureStartedStart > executeRunnerStart, "e
 const executeRunnerSource = daytonaSource.slice(executeRunnerStart, ensureStartedStart);
 
 test("removed repository allowlist cannot regress", () => {
-  for (const source of [configSource, daytonaSource, runnerSource, mcpSource]) {
+  for (const source of [configSource, githubAppSource, daytonaSource, runnerSource, mcpSource]) {
     assert.equal(source.includes("ALLOWED_GITHUB_REPOS"), false);
     assert.equal(source.includes("allowedRepositories"), false);
   }
@@ -30,6 +31,36 @@ test("Daytona region is not hardcoded", () => {
   assert.equal(configSource.includes("DAYTONA_TARGET"), false);
   assert.equal(configSource.includes("daytonaTarget"), false);
   assert.equal(/\btarget\s*:/.test(daytonaSource), false);
+});
+
+test("GitHub App credentials are the primary multi-owner auth path", () => {
+  assert.match(configSource, /GITHUB_APP_ID/);
+  assert.match(configSource, /GITHUB_APP_PRIVATE_KEY_BASE64/);
+  assert.match(githubAppSource, /getRepositoryCredentials/);
+  assert.match(githubAppSource, /config\.githubAppId && config\.githubAppPrivateKeyBase64/);
+  assert.match(githubAppSource, /x-access-token/);
+});
+
+test("GitHub App signs RS256 JWTs and resolves repository installations", () => {
+  assert.match(githubAppSource, /RSASSA-PKCS1-v1_5/);
+  assert.match(githubAppSource, /SHA-256/);
+  assert.match(githubAppSource, /\/repos\/\$\{encodeURIComponent\(owner\)\}\/\$\{encodeURIComponent\(name\)\}\/installation/);
+  assert.match(githubAppSource, /\/app\/installations\/\$\{installationId\}\/access_tokens/);
+  assert.match(githubAppSource, /TOKEN_CACHE_SKEW_MS/);
+});
+
+test("GitHub App private key supports GitHub RSA PEM and PKCS8 PEM", () => {
+  assert.match(githubAppSource, /BEGIN RSA PRIVATE KEY/);
+  assert.match(githubAppSource, /BEGIN PRIVATE KEY/);
+  assert.match(githubAppSource, /pkcs1ToPkcs8/);
+  assert.match(githubAppSource, /crypto\.subtle\.importKey/);
+});
+
+test("repository normalization supports owner/repo and temporary legacy fallback", () => {
+  assert.match(githubAppSource, /repository must be in owner\/repo form/);
+  assert.match(githubAppSource, /config\.githubOwner/);
+  assert.match(mcpSource, /Onestepsmarter\/oss-lms/);
+  assert.match(mcpSource, /Crown384\/pamaos-next/);
 });
 
 test("production Daytona API retries transient safe requests ten times", () => {
@@ -50,6 +81,14 @@ test("sandbox creation uses one recoverable name across retries", () => {
   assert.match(daytonaSource, /createSandboxRequest\(input, newSandboxName\(\)\)/);
 });
 
+test("Daytona resolves GitHub credentials before creating a fresh sandbox", () => {
+  const runCycleStart = daytonaSource.indexOf("export async function runCycle");
+  const rerunStart = daytonaSource.indexOf("export async function rerunCycle");
+  const runCycleSource = daytonaSource.slice(runCycleStart, rerunStart);
+  assert.ok(runCycleStart >= 0 && rerunStart > runCycleStart);
+  assert.ok(runCycleSource.indexOf("getRepositoryCredentials(repository)") < runCycleSource.indexOf("createSandbox(normalizedInput)"));
+});
+
 test("arbitrary command execution is single-shot and never automatically retried", () => {
   assert.equal(executeRunnerSource.includes("fetchWithRetry"), false);
   assert.match(executeRunnerSource, /await fetch\(/);
@@ -65,8 +104,10 @@ test("runner reads required environment values explicitly", () => {
   for (const name of [
     "ACTION",
     "SYNC_MODE",
-    "GITHUB_OWNER",
+    "GITHUB_USERNAME",
     "GITHUB_TOKEN",
+    "GIT_IDENTITY_NAME",
+    "GIT_IDENTITY_EMAIL",
     "REPOSITORY",
     "BRANCH",
     "COMMAND",
@@ -74,6 +115,19 @@ test("runner reads required environment values explicitly", () => {
   ]) {
     assert.match(runner, new RegExp(`printenv ${name}`));
   }
+});
+
+test("runner is owner agnostic and clones full owner/repo remotes", () => {
+  assert.equal(runner.includes("GITHUB_OWNER"), false);
+  assert.match(runner, /REMOTE="https:\/\/github\.com\/\$REPOSITORY\.git"/);
+  assert.match(runner, /Repository must be in owner\/repo form/);
+  assert.match(runner, /Daytona cycle: %s @ %s/);
+});
+
+test("runner preserves compatibility with old persistent checkout context", () => {
+  assert.match(runner, /CONTEXT_THREE/);
+  assert.match(runner, /REPOSITORY="\$CONTEXT_ONE\/\$CONTEXT_TWO"/);
+  assert.match(runner, /printf '%s\\n%s\\n' "\$REPOSITORY" "\$BRANCH"/);
 });
 
 test("runner exposes arbitrary command execution with root path default", () => {
@@ -93,7 +147,8 @@ test("runner configures a local Git identity for nested commit scripts", () => {
   assert.match(runner, /ensure_git_identity\(\)/);
   assert.match(runner, /git config user\.name/);
   assert.match(runner, /git config user\.email/);
-  assert.match(runner, /users\.noreply\.github\.com/);
+  assert.match(runner, /GIT_IDENTITY_NAME/);
+  assert.match(runner, /GIT_IDENTITY_EMAIL/);
   assert.match(runner, /ensure_git_identity \|\| exit/);
 });
 
@@ -104,7 +159,8 @@ test("runner validates the selected working directory stays in the repo", () => 
   assert.match(runner, /Working path is not a directory/);
 });
 
-test("MCP schemas expose command and path on fresh and rerun cycles", () => {
+test("MCP schemas expose owner/repo, command, and path on fresh and rerun cycles", () => {
+  assert.match(mcpSource, /owner\/repo form/);
   assert.match(mcpSource, /const COMMAND_PROPERTIES/);
   assert.match(mcpSource, /command:/);
   assert.match(mcpSource, /path:/);
@@ -125,12 +181,12 @@ test("runner keeps GitHub token secret while Git commands authenticate", () => {
   assert.match(runner, /with_git_auth bash -lc "\$COMMAND"/);
 });
 
-test("runner Git credentials are temporary, cleaned, and use configured owner", () => {
+test("runner Git credentials are temporary, cleaned, and use supplied username", () => {
   assert.match(runner, /with_git_auth\(\) \(/);
   assert.match(runner, /trap 'rm -f/);
   assert.match(runner, /GIT_ASKPASS=/);
-  assert.match(runner, /\*Username\*\).*GITHUB_OWNER/);
-  assert.equal(runner.includes("x-access-token"), false);
+  assert.match(runner, /\*Username\*\).*GITHUB_USERNAME/);
+  assert.match(runner, /GITHUB_USERNAME="x-access-token"/);
 });
 
 test("runner implementation never pushes source on its own", () => {
@@ -146,12 +202,21 @@ test("custom terminal commands may leave working-tree changes without forced fai
   assert.match(runner, /Repository working tree changed during the automatic QA cycle/);
 });
 
+test("live smoke validates GitHub App access across Crown384 and Onestepsmarter", () => {
+  assert.match(smokeSource, /const REPOSITORY = "Crown384\/pamaos-next"/);
+  assert.match(smokeSource, /const SECONDARY_REPOSITORY = "Onestepsmarter\/oss-lms"/);
+  assert.match(smokeSource, /GITHUB_APP_ID/);
+  assert.match(smokeSource, /GITHUB_APP_PRIVATE_KEY_BASE64/);
+  assert.match(smokeSource, /assertRepositoryAccess\(REPOSITORY\)/);
+  assert.match(smokeSource, /assertRepositoryAccess\(SECONDARY_REPOSITORY\)/);
+});
+
 test("live smoke test uses exact runner, authenticated git pull, command, and cleanup", () => {
   assert.match(smokeSource, /loadRunnerScript/);
-  assert.match(smokeSource, /const REPOSITORY = "pamaos-next"/);
   assert.match(smokeSource, /const BRANCH = "main"/);
   assert.match(smokeSource, /git pull --ff-only origin/);
   assert.match(smokeSource, /SMOKE_PULL=ok/);
+  assert.match(smokeSource, /GITHUB_USERNAME: "x-access-token"/);
   assert.match(smokeSource, /COMMAND: smokeCommand/);
   assert.match(smokeSource, /WORKING_PATH: "\."/);
   assert.match(smokeSource, /== custom command ==/);
