@@ -3,8 +3,10 @@ export const RUNNER_SCRIPT = String.raw`set -uo pipefail
 STATUS=0
 ACTION="$(printenv ACTION 2>/dev/null || true)"
 SYNC_MODE="$(printenv SYNC_MODE 2>/dev/null || true)"
-GITHUB_OWNER="$(printenv GITHUB_OWNER 2>/dev/null || true)"
+GITHUB_USERNAME="$(printenv GITHUB_USERNAME 2>/dev/null || true)"
 TOKEN_SECRET="$(printenv GITHUB_TOKEN 2>/dev/null || true)"
+GIT_IDENTITY_NAME="$(printenv GIT_IDENTITY_NAME 2>/dev/null || true)"
+GIT_IDENTITY_EMAIL="$(printenv GIT_IDENTITY_EMAIL 2>/dev/null || true)"
 COMMAND="$(printenv COMMAND 2>/dev/null || true)"
 WORKING_PATH="$(printenv WORKING_PATH 2>/dev/null || true)"
 REPO_DIR="$HOME/workspace/repo"
@@ -13,13 +15,12 @@ CONTEXT_FILE="$HOME/.mcp-daytona-context"
 [ -n "$ACTION" ] || ACTION="fresh"
 [ -n "$SYNC_MODE" ] || SYNC_MODE="reset"
 [ -n "$WORKING_PATH" ] || WORKING_PATH="."
+[ -n "$GITHUB_USERNAME" ] || GITHUB_USERNAME="x-access-token"
+[ -n "$GIT_IDENTITY_NAME" ] || GIT_IDENTITY_NAME="Daytona MCP"
+[ -n "$GIT_IDENTITY_EMAIL" ] || GIT_IDENTITY_EMAIL="daytona-mcp@users.noreply.github.com"
 
 if [ -z "$TOKEN_SECRET" ]; then
   printf 'Missing runner environment variable: GITHUB_TOKEN\n'
-  exit 2
-fi
-if [ -z "$GITHUB_OWNER" ]; then
-  printf 'Missing runner environment variable: GITHUB_OWNER\n'
   exit 2
 fi
 
@@ -36,7 +37,7 @@ with_git_auth() (
   cat > "$ASKPASS" <<EOF
 #!/bin/sh
 case "\$1" in
-  *Username*) printf '%s\n' "$GITHUB_OWNER" ;;
+  *Username*) printf '%s\n' "$GITHUB_USERNAME" ;;
   *) cat "$TOKEN_FILE"; printf '\n' ;;
 esac
 EOF
@@ -46,8 +47,8 @@ EOF
 
 ensure_git_identity() {
   cd "$REPO_DIR" || return 1
-  git config user.name >/dev/null 2>&1 || git config user.name "$GITHUB_OWNER"
-  git config user.email >/dev/null 2>&1 || git config user.email "$GITHUB_OWNER@users.noreply.github.com"
+  git config user.name >/dev/null 2>&1 || git config user.name "$GIT_IDENTITY_NAME"
+  git config user.email >/dev/null 2>&1 || git config user.email "$GIT_IDENTITY_EMAIL"
 }
 
 run_step() {
@@ -97,11 +98,19 @@ fresh_checkout() {
     return 2
   fi
 
-  REMOTE="https://github.com/$GITHUB_OWNER/$REPOSITORY.git"
+  case "$REPOSITORY" in
+    */*) ;;
+    *)
+      printf 'Repository must be in owner/repo form: %s\n' "$REPOSITORY"
+      return 2
+      ;;
+  esac
+
+  REMOTE="https://github.com/$REPOSITORY.git"
   rm -rf "$REPO_DIR"
   mkdir -p "$(dirname "$REPO_DIR")"
   with_git_auth git clone --branch "$BRANCH" --single-branch "$REMOTE" "$REPO_DIR" || return $?
-  printf '%s\n%s\n%s\n' "$GITHUB_OWNER" "$REPOSITORY" "$BRANCH" > "$CONTEXT_FILE"
+  printf '%s\n%s\n' "$REPOSITORY" "$BRANCH" > "$CONTEXT_FILE"
   chmod 600 "$CONTEXT_FILE"
 }
 
@@ -110,10 +119,19 @@ load_context() {
     printf 'Persistent sandbox has no Daytona MCP checkout context.\n'
     return 1
   fi
-  SAVED_OWNER="$(sed -n '1p' "$CONTEXT_FILE")"
-  REPOSITORY="$(sed -n '2p' "$CONTEXT_FILE")"
-  BRANCH="$(sed -n '3p' "$CONTEXT_FILE")"
-  if [ "$SAVED_OWNER" != "$GITHUB_OWNER" ] || [ -z "$REPOSITORY" ] || [ -z "$BRANCH" ]; then
+
+  CONTEXT_ONE="$(sed -n '1p' "$CONTEXT_FILE")"
+  CONTEXT_TWO="$(sed -n '2p' "$CONTEXT_FILE")"
+  CONTEXT_THREE="$(sed -n '3p' "$CONTEXT_FILE")"
+  if [ -n "$CONTEXT_THREE" ]; then
+    REPOSITORY="$CONTEXT_ONE/$CONTEXT_TWO"
+    BRANCH="$CONTEXT_THREE"
+  else
+    REPOSITORY="$CONTEXT_ONE"
+    BRANCH="$CONTEXT_TWO"
+  fi
+
+  if [ -z "$REPOSITORY" ] || [ -z "$BRANCH" ]; then
     printf 'Persistent sandbox checkout context is invalid.\n'
     return 1
   fi
@@ -227,7 +245,7 @@ fi
 
 ensure_git_identity || exit $?
 cd "$REPO_DIR" || exit 1
-printf 'Daytona cycle: %s/%s @ %s\n' "$GITHUB_OWNER" "$REPOSITORY" "$BRANCH"
+printf 'Daytona cycle: %s @ %s\n' "$REPOSITORY" "$BRANCH"
 printf 'Checked out: %s\n' "$(git rev-parse HEAD)"
 
 if [ -n "$COMMAND" ]; then
