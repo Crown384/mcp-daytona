@@ -24,11 +24,10 @@ Required:
 Optional:
 
 - `DAYTONA_API_URL` (normally `https://app.daytona.io/api`)
-- `GITHUB_TOKEN` + `GITHUB_OWNER` only as a temporary legacy fallback during migration
 
 `GITHUB_APP_PRIVATE_KEY_BASE64` is the base64 encoding of the complete GitHub App `.pem` file. Both `BEGIN RSA PRIVATE KEY` and `BEGIN PRIVATE KEY` PEM formats are supported.
 
-The same GitHub App can be installed on multiple accounts or organizations. `run_cycle` accepts repositories in `owner/repo` form and automatically resolves the correct installation and mints a short-lived installation token.
+The same GitHub App can be installed on multiple accounts or organizations. `run_cycle` requires repositories in full `owner/repo` form and automatically resolves the correct installation and mints a short-lived installation token scoped to that repository. Bare repository names are rejected.
 
 The MCP does not force a Daytona region. Sandbox creation omits the `target` field so Daytona can schedule the sandbox in a region available to the organization.
 
@@ -58,6 +57,8 @@ https://daytona-mcp.pama.page/mcp
 
 No custom MCP API-key layer is implemented.
 
+After deploying a tool-schema change, refresh/reconnect the ChatGPT MCP connection so clients stop using cached tool metadata.
+
 ## Tools
 
 ### `run_cycle`
@@ -66,7 +67,7 @@ Creates a fresh managed sandbox and runs the repository cycle.
 
 Important inputs:
 
-- `repository` — GitHub repository in `owner/repo` form, for example `Crown384/pamaos-next` or `Onestepsmarter/oss-lms`.
+- `repository` — required full GitHub repository in `owner/repo` form, for example `Crown384/pamaos-next` or `Onestepsmarter/afri_cart`.
 - `branch` — existing branch, default `main`.
 - `command` — optional arbitrary shell command; when omitted, the standard QA pipeline runs.
 - `path` — optional repository-relative initial working directory, default `.`.
@@ -100,6 +101,6 @@ All lifecycle tools verify the `managed-by=mcp-daytona` label before acting.
 
 Every fresh run and rerun invokes the same runner script once. It clones or reuses the checkout, optionally syncs Git, runs the requested arbitrary command or the standard QA pipeline, and returns logs.
 
-GitHub credentials are supplied only for the current runner invocation. The token is removed from `GITHUB_TOKEN` before repository commands run and is exposed to Git only through temporary `GIT_ASKPASS` files that are deleted afterward. Nested commands such as `git pull`, `git commit`, and `git push` can authenticate through that temporary Git credential context.
+GitHub credentials are supplied only for the current runner invocation. The installation token is removed from `GITHUB_TOKEN` before repository commands run and is exposed to Git only through temporary `GIT_ASKPASS` files that are deleted afterward. Nested commands such as `git pull`, `git commit`, and `git push` can authenticate through that temporary Git credential context.
 
 The runner itself does not automatically stage, commit, or push source changes. Arbitrary commands may do so when explicitly requested and when the GitHub App installation has the required repository permissions.
