@@ -6,71 +6,57 @@ Private ChatGPT developer plugin that uses Daytona as an isolated execution/QA m
 
 - One production Cloudflare Worker.
 - One MCP endpoint: `/mcp`.
-- No generic remote shell tool.
 - GitHub remains the source of truth for implementation edits.
 - Daytona sandboxes run one controlled runner script.
 - Persistent sandboxes are explicitly labeled and lifecycle tools refuse unrelated Daytona sandboxes.
+- GitHub App installation tokens are minted per repository, so repositories can belong to different users or organizations.
 
 ## Environment
 
-Copy `.env.example` to `.env` for local Next.js work.
+Copy `.env.example` to `.env.local` for local work.
 
-Cloudflare secrets:
+Required:
 
 - `DAYTONA_API_KEY`
-- `GITHUB_TOKEN`
+- `GITHUB_APP_ID`
+- `GITHUB_APP_PRIVATE_KEY_BASE64`
 
-Cloudflare variables:
+Optional:
 
 - `DAYTONA_API_URL` (normally `https://app.daytona.io/api`)
-- `GITHUB_OWNER`
+- `GITHUB_TOKEN` + `GITHUB_OWNER` only as a temporary legacy fallback during migration
+
+`GITHUB_APP_PRIVATE_KEY_BASE64` is the base64 encoding of the complete GitHub App `.pem` file. Both `BEGIN RSA PRIVATE KEY` and `BEGIN PRIVATE KEY` PEM formats are supported.
+
+The same GitHub App can be installed on multiple accounts or organizations. `run_cycle` accepts repositories in `owner/repo` form and automatically resolves the correct installation and mints a short-lived installation token.
 
 The MCP does not force a Daytona region. Sandbox creation omits the `target` field so Daytona can schedule the sandbox in a region available to the organization.
 
-`wrangler.jsonc` uses `keep_vars: true`, so deployments preserve variables configured in the Cloudflare dashboard.
-
 ## Local validation workflow
 
-After pulling the latest branch, run one command:
+After pulling the latest branch, run:
 
 ```bash
 pnpm run validate
 ```
 
-That single script:
+Validation performs local code checks, verifies GitHub App access to the configured smoke repositories, runs a live Daytona clone/pull smoke test, builds the Cloudflare/OpenNext production bundle, writes `mcp-daytona-validation.log`, and pushes only the validation artifact.
 
-1. verifies Git HEAD, branch, and a clean working tree;
-2. installs dependencies from the lockfile;
-3. runs TypeScript type checking and ESLint;
-4. runs tests when a `test` script exists;
-5. runs Fallow when it is configured;
-6. builds the production Cloudflare/OpenNext bundle;
-7. verifies the validation did not modify tracked source files;
-8. writes the complete output and final PASS/FAIL summary to `mcp-daytona-validation.log`;
-9. commits only that log file; and
-10. pushes the log commit to the current branch.
-
-The log is pushed on both passing and failing validation runs so it can be reviewed remotely. The script never stages or commits implementation changes.
-
-After a passing validation log has been reviewed, deploy the already-built production bundle with:
+After a passing validation log has been reviewed, deploy with:
 
 ```bash
 pnpm run deploy
 ```
-
-`pnpm run deploy` only publishes the existing `.open-next` production build; it does not repeat the validation/build cycle.
 
 ## Connect the private ChatGPT plugin
 
 Use the production MCP endpoint:
 
 ```text
-https://YOUR-DOMAIN/mcp
+https://daytona-mcp.pama.page/mcp
 ```
 
-No custom `MCP_API_KEY` layer is implemented. Configure the private ChatGPT app/plugin with no additional MCP authentication.
-
-Because the Worker endpoint itself is internet-reachable, private ChatGPT visibility is not network-level access control. The server uses strict tool schemas, sandbox isolation, managed-sandbox labels, and removes GitHub credentials from repository processes. Repository access is unrestricted within the configured `GITHUB_OWNER`; any repository accessible to the configured GitHub token can be used.
+No custom MCP API-key layer is implemented.
 
 ## Tools
 
@@ -78,53 +64,42 @@ Because the Worker endpoint itself is internet-reachable, private ChatGPT visibi
 
 Creates a fresh managed sandbox and runs the repository cycle.
 
-Inputs:
+Important inputs:
 
-- `repository` - repository name without the GitHub owner.
-- `branch` - existing branch, default `main`.
-- `timeout_seconds` - 60 to 3600, default 1200.
-- `after_run` - `delete`, `keep`, `stop`, or `pause`.
-- `snapshot` - `daytona-small`, `daytona-medium`, `daytona-large`, or the equivalent `daytona-vm-*` sizes.
-- `auto_stop_minutes` - idle timeout; `0` keeps a running sandbox alive indefinitely.
+- `repository` — GitHub repository in `owner/repo` form, for example `Crown384/pamaos-next` or `Onestepsmarter/oss-lms`.
+- `branch` — existing branch, default `main`.
+- `command` — optional arbitrary shell command; when omitted, the standard QA pipeline runs.
+- `path` — optional repository-relative initial working directory, default `.`.
+- `timeout_seconds` — 60 to 3600, default 1200.
+- `after_run` — `delete`, `keep`, `stop`, or `pause`.
+- `snapshot` — container sizes `daytona-small|medium|large` or VM sizes `daytona-vm-small|medium|large`.
+- `auto_stop_minutes` — idle timeout; `0` disables auto-stop.
 
-`pause` requires a VM snapshot. `delete` creates an ephemeral sandbox. Other lifecycle modes create a persistent sandbox with auto-delete disabled.
+`pause` requires a VM snapshot. Container sandboxes should use `stop` and later `start`.
 
 ### `rerun_cycle`
 
 Reuses a persistent sandbox returned by `run_cycle`.
 
-- Starts it automatically when it is stopped or paused.
-- `sync_mode=reset` fetches the saved GitHub branch and hard-resets the checkout to `origin/<branch>` before running.
-- `sync_mode=none` reruns the existing checkout as-is.
-- `after_run` again supports `delete`, `keep`, `stop`, or `pause`.
-
-The sandbox stores only its repository/branch context. GitHub credentials are supplied per runner invocation.
+- A fresh GitHub App installation token is minted for the sandbox repository on each rerun.
+- `sync_mode=reset` fetches and hard-resets to the saved branch.
+- `sync_mode=none` keeps the existing checkout as-is.
+- `after_run` supports `delete`, `keep`, `stop`, or `pause`.
 
 ### Sandbox lifecycle tools
 
-- `list_sandboxes` - list only sandboxes labeled as managed by this MCP.
-- `get_sandbox` - inspect one managed sandbox.
-- `manage_sandbox` - `start`, `stop`, `pause`, or `recover`.
-- `configure_sandbox` - change `auto_stop`, `auto_pause`, or `auto_delete` intervals.
-- `destroy_sandbox` - permanently delete a managed sandbox.
+- `list_sandboxes`
+- `get_sandbox`
+- `manage_sandbox` — `start`, `stop`, `pause`, or `recover`
+- `configure_sandbox`
+- `destroy_sandbox`
 
 All lifecycle tools verify the `managed-by=mcp-daytona` label before acting.
 
-## Single runner script
+## Runner behavior
 
-Every fresh run and rerun invokes the same runner script exactly once. It:
+Every fresh run and rerun invokes the same runner script once. It clones or reuses the checkout, optionally syncs Git, runs the requested arbitrary command or the standard QA pipeline, and returns logs.
 
-1. Clones the requested branch on a fresh run, or loads the saved checkout on a rerun.
-2. Optionally fetches and hard-resets a persistent checkout to the latest GitHub branch.
-3. Detects npm, pnpm, Yarn, or Bun from the lockfile.
-4. Installs dependencies using the lockfile when available.
-5. Runs configured `typecheck`, `lint`, and `test` scripts.
-6. Runs Fallow when configured.
-7. Runs the repository `build` script when configured.
-8. Prints final Git status.
-9. Pushes the checked `HEAD` back to the same branch.
-10. Returns the log to ChatGPT.
+GitHub credentials are supplied only for the current runner invocation. The token is removed from `GITHUB_TOKEN` before repository commands run and is exposed to Git only through temporary `GIT_ASKPASS` files that are deleted afterward. Nested commands such as `git pull`, `git commit`, and `git push` can authenticate through that temporary Git credential context.
 
-The GitHub token is not exported to repository scripts. It is kept as a non-exported shell variable and only materialized into temporary `GIT_ASKPASS` files during Git network operations; those files are deleted immediately afterward.
-
-The runner never stages or commits implementation files. Source changes remain the responsibility of the GitHub API workflow.
+The runner itself does not automatically stage, commit, or push source changes. Arbitrary commands may do so when explicitly requested and when the GitHub App installation has the required repository permissions.
