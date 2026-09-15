@@ -30,6 +30,54 @@ function bytesFromBase64(value: string): Uint8Array {
   return bytes;
 }
 
+function concatBytes(...parts: Uint8Array[]): Uint8Array {
+  const total = parts.reduce((sum, part) => sum + part.length, 0);
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    result.set(part, offset);
+    offset += part.length;
+  }
+  return result;
+}
+
+function derLength(length: number): Uint8Array {
+  if (length < 128) return Uint8Array.of(length);
+  const bytes: number[] = [];
+  let remaining = length;
+  while (remaining > 0) {
+    bytes.unshift(remaining & 0xff);
+    remaining >>= 8;
+  }
+  return Uint8Array.of(0x80 | bytes.length, ...bytes);
+}
+
+function derWrap(tag: number, value: Uint8Array): Uint8Array {
+  return concatBytes(Uint8Array.of(tag), derLength(value.length), value);
+}
+
+function pkcs1ToPkcs8(pkcs1: Uint8Array): Uint8Array {
+  const version = Uint8Array.of(0x02, 0x01, 0x00);
+  const rsaAlgorithmIdentifier = Uint8Array.of(
+    0x30,
+    0x0d,
+    0x06,
+    0x09,
+    0x2a,
+    0x86,
+    0x48,
+    0x86,
+    0xf7,
+    0x0d,
+    0x01,
+    0x01,
+    0x01,
+    0x05,
+    0x00,
+  );
+  return derWrap(0x30, concatBytes(version, rsaAlgorithmIdentifier, derWrap(0x04, pkcs1)));
+}
+
 function base64Url(bytes: Uint8Array): string {
   let binary = "";
   for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]);
@@ -42,14 +90,15 @@ function base64UrlJson(value: unknown): string {
 
 function privateKeyDer(base64WrappedPem: string): Uint8Array {
   const pem = new TextDecoder().decode(bytesFromBase64(base64WrappedPem));
-  const body = pem
-    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
-    .replace(/-----END PRIVATE KEY-----/g, "")
-    .replace(/\s+/g, "");
-  if (!body || body === pem.replace(/\s+/g, "")) {
-    throw new Error("GITHUB_APP_PRIVATE_KEY_BASE64 did not decode to a PKCS#8 PEM private key");
-  }
-  return bytesFromBase64(body);
+  const pkcs8Match = pem.match(/-----BEGIN PRIVATE KEY-----([\s\S]+?)-----END PRIVATE KEY-----/);
+  if (pkcs8Match) return bytesFromBase64(pkcs8Match[1]);
+
+  const pkcs1Match = pem.match(/-----BEGIN RSA PRIVATE KEY-----([\s\S]+?)-----END RSA PRIVATE KEY-----/);
+  if (pkcs1Match) return pkcs1ToPkcs8(bytesFromBase64(pkcs1Match[1]));
+
+  throw new Error(
+    "GITHUB_APP_PRIVATE_KEY_BASE64 did not decode to a supported GitHub App PEM private key",
+  );
 }
 
 async function appPrivateKey(): Promise<CryptoKey> {
