@@ -59,6 +59,20 @@ No custom MCP API-key layer is implemented.
 
 After deploying a tool-schema change, refresh/reconnect the ChatGPT MCP connection so clients stop using cached tool metadata.
 
+## Secure Env Store integration (optional)
+
+Daytona MCP can now fetch a project/environment from Pama Env Store **on the Worker**, without placing the secret in the MCP request or a generated shell command. The machine token is only configured as a Cloudflare Worker secret, never as an MCP tool argument:
+
+- `PAMA_ENV_STORE_URL` — HTTPS **Next.js Env Store website** origin (e.g. `https://env-store.example.com`); this is **not** the Convex cloud URL.
+- `PAMA_ENV_STORE_TOKEN` — one-time `pes_...` machine token created in Env Store and securely set using Cloudflare Worker secret management.
+- `PAMA_ENV_STORE_ALLOW_PRODUCTION=true` — optional explicit production opt-in. Default is denied.
+
+Create a dedicated Env Store machine client with access only to the required projects and environments. Configure these Worker secrets out-of-band before deployment. Env Store must be deployed with a working Convex backend first.
+
+Pass both `env_store_project` (its slug) and `env_store_environment` (`staging` or `production`) on `run_cycle` or `rerun_cycle`. No secret values or machine tokens belong in these tool parameters. The Worker requests `GET /api/projects/{slug}/env/{environment}` with its bearer credential over HTTPS, validates the response, refuses reserved runner environment names, then injects approved values through Daytona's **per-execution process environment**. The values are not saved to the checkout or automatically persisted in the sandbox. The machine credential is not forwarded to Daytona, and no secret values are returned by the MCP API. Normal calls without these optional parameters work as before.
+
+The runner output is redacted for exact secret values (including URL encoding). **This is defense in depth, not a complete data-loss-prevention boundary.** Arbitrary shell commands or malicious repository scripts running with secret access can encode, transmit, or otherwise exfiltrate secrets. Limit the machine token to staging whenever possible, use trustworthy repositories/commands, restrict egress on sensitive sandboxes, and rotate credentials. Production use requires explicit permission and security review.
+
 ## Tools
 
 ### `run_cycle`

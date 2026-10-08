@@ -12,6 +12,7 @@ import {
   type SandboxSnapshot,
   type SyncMode,
 } from "./daytona";
+import type { EnvStoreSelection } from "./env-store";
 
 const CURRENT_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOL = "2025-11-25";
@@ -45,6 +46,11 @@ type Tool = Readonly<{
   annotations: JsonRecord;
 }>;
 
+const ENV_STORE_PROPERTIES = {
+  env_store_project: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$", description: "Optional Pama Env Store project slug. Values are fetched on the MCP backend; never provide secrets as tool arguments." },
+  env_store_environment: { type: "string", enum: ["staging", "production"], description: "Required with env_store_project. Production is disabled unless explicitly enabled by the MCP operator." },
+} as const;
+
 const COMMAND_PROPERTIES = {
   command: {
     type: "string",
@@ -76,6 +82,7 @@ const RUN_CYCLE_TOOL: Tool = {
       },
       branch: { type: "string", default: "main", description: "Existing GitHub branch." },
       ...COMMAND_PROPERTIES,
+      ...ENV_STORE_PROPERTIES,
       timeout_seconds: { type: "integer", minimum: 60, maximum: 3600, default: 1200 },
       after_run: { type: "string", enum: ["delete", "keep", "stop", "pause"], default: "delete" },
       snapshot: { type: "string", enum: [...SNAPSHOTS], default: "daytona-medium" },
@@ -103,6 +110,7 @@ const RERUN_CYCLE_TOOL: Tool = {
     properties: {
       sandbox_id: { type: "string" },
       ...COMMAND_PROPERTIES,
+      ...ENV_STORE_PROPERTIES,
       timeout_seconds: { type: "integer", minimum: 60, maximum: 3600, default: 1200 },
       sync_mode: {
         type: "string",
@@ -267,6 +275,19 @@ function parseSandboxId(args: JsonRecord): string {
   return stringValue(args, "sandbox_id", SANDBOX_PATTERN);
 }
 
+function parseEnvStoreSelection(args: JsonRecord): EnvStoreSelection | undefined {
+  const project = args.env_store_project;
+  const environment = args.env_store_environment;
+  if (project === undefined && environment === undefined) return undefined;
+  if (typeof project !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(project) || project.length > 96) {
+    throw new Error("env_store_project must be a project slug");
+  }
+  if (environment !== "staging" && environment !== "production") {
+    throw new Error("env_store_environment is required and must be staging or production");
+  }
+  return { project, environment };
+}
+
 function parseCommand(args: JsonRecord): string | undefined {
   if (args.command === undefined) return undefined;
   const command = stringValue(args, "command");
@@ -323,6 +344,7 @@ async function executeTool(name: string, args: JsonRecord): Promise<{ text: stri
       branch: parseBranch(args),
       command: parseCommand(args),
       workingPath: parseWorkingPath(args),
+      envStore: parseEnvStoreSelection(args),
       timeoutSeconds: integerValue(args, "timeout_seconds", 1200, 60, 3600),
       afterRun,
       snapshot,
@@ -337,6 +359,7 @@ async function executeTool(name: string, args: JsonRecord): Promise<{ text: stri
       sandboxId: parseSandboxId(args),
       command: parseCommand(args),
       workingPath: parseWorkingPath(args),
+      envStore: parseEnvStoreSelection(args),
       timeoutSeconds: integerValue(args, "timeout_seconds", 1200, 60, 3600),
       syncMode: enumValue<SyncMode>(args, "sync_mode", ["reset", "none"], "reset"),
       afterRun: enumValue<AfterRun>(args, "after_run", ["delete", "keep", "stop", "pause"], "keep"),

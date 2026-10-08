@@ -1,6 +1,7 @@
 import { getConfig } from "./config";
 import { getRepositoryCredentials, normalizeRepository, type RepositoryCredentials } from "./github-app";
 import { RUNNER_SCRIPT } from "./runner";
+import { loadEnvStoreValues, redactEnvStoreOutput, type EnvStoreSelection } from "./env-store";
 
 const DAYTONA_TOOLBOX_URL = "https://proxy.app.daytona.io/toolbox";
 const MAX_LOG_CHARS = 40_000;
@@ -32,6 +33,7 @@ export type RunCycleInput = Readonly<{
   autoStopMinutes: number;
   command?: string;
   workingPath: string;
+  envStore?: EnvStoreSelection;
 }>;
 
 export type RerunCycleInput = Readonly<{
@@ -41,6 +43,7 @@ export type RerunCycleInput = Readonly<{
   afterRun: AfterRun;
   command?: string;
   workingPath: string;
+  envStore?: EnvStoreSelection;
 }>;
 
 export type CycleResult = Readonly<{
@@ -264,10 +267,12 @@ async function executeRunner(
   syncMode: SyncMode = "reset",
   command?: string,
   workingPath = ".",
+  runtimeEnv: Record<string, string> = {},
 ): Promise<{ exitCode: number; log: string }> {
   const config = getConfig();
   const encodedScript = btoa(RUNNER_SCRIPT);
   const envs: Record<string, string> = {
+    ...runtimeEnv,
     GITHUB_TOKEN: credentials.token,
     GITHUB_USERNAME: credentials.username,
     GIT_IDENTITY_NAME: credentials.identityName,
@@ -288,17 +293,17 @@ async function executeRunner(
       body: JSON.stringify({ command: `printf '%s' '${encodedScript}' | base64 -d | bash`, cwd: ".", envs, timeout: timeoutSeconds }),
     });
   } catch (error) {
-    throw new Error(`Daytona runner network request failed and was not retried because the command may already have started: ${errorMessage(error)}`);
+    throw new Error(`Daytona runner network request failed and was not retried because the command may already have started: ${redactEnvStoreOutput(errorMessage(error), runtimeEnv)}`);
   }
 
   const text = await response.text();
-  if (!response.ok) throw new Error(`Daytona runner execution failed (${response.status}): ${text.slice(0, 1_000)}`);
+  if (!response.ok) throw new Error(`Daytona runner execution failed (${response.status}): ${redactEnvStoreOutput(text.slice(0, 1_000), runtimeEnv)}`);
 
   const value: unknown = text ? JSON.parse(text) : {};
   if (!isRecord(value) || typeof value.exitCode !== "number" || typeof value.result !== "string") {
     throw new Error("Daytona runner response was missing exitCode or result");
   }
-  return { exitCode: value.exitCode, log: truncateLog(value.result) };
+  return { exitCode: value.exitCode, log: truncateLog(redactEnvStoreOutput(value.result, runtimeEnv)) };
 }
 
 async function ensureStarted(sandboxId: string, sandbox: unknown): Promise<void> {
@@ -341,6 +346,8 @@ function filterManagedList(value: unknown): unknown {
 
 export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
   const repository = normalizeRepository(input.repository);
+  // Fetch before provisioning: denied scopes never create a sandbox.
+  const runtimeEnv = input.envStore ? await loadEnvStoreValues(input.envStore) : {};
   const credentials = await getRepositoryCredentials(repository);
   const normalizedInput: RunCycleInput = { ...input, repository };
   const sandboxId = await createSandbox(normalizedInput);
@@ -356,6 +363,7 @@ export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
       "reset",
       input.command,
       input.workingPath,
+      runtimeEnv,
     );
   } catch (error) {
     const lifecycle = await applyAfterRun(sandboxId, input.afterRun);
@@ -378,6 +386,7 @@ export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
 export async function rerunCycle(input: RerunCycleInput): Promise<CycleResult> {
   const sandbox = await getManagedSandboxRaw(input.sandboxId);
   const context = managedContext(sandbox);
+  const runtimeEnv = input.envStore ? await loadEnvStoreValues(input.envStore) : {};
   const credentials = await getRepositoryCredentials(context.repository);
   await ensureStarted(input.sandboxId, sandbox);
   const execution = await executeRunner(
@@ -389,6 +398,7 @@ export async function rerunCycle(input: RerunCycleInput): Promise<CycleResult> {
     input.syncMode,
     input.command,
     input.workingPath,
+    runtimeEnv,
   );
   const lifecycle = await applyAfterRun(input.sandboxId, input.afterRun);
   return {
