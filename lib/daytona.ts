@@ -296,8 +296,14 @@ async function executeRunner(
     throw new Error(`Daytona runner network request failed and was not retried because the command may already have started: ${redactEnvStoreOutput(errorMessage(error), runtimeEnv)}`);
   }
 
+  // Never surface an upstream toolbox error body: it may include a partial,
+  // transformed or truncated secret and cannot be reliably sanitized.
+  // Discard it completely, keeping only the HTTP status for diagnostics.
+  if (!response.ok) {
+    await response.body?.cancel().catch(() => undefined);
+    throw new Error(`Daytona runner execution failed (HTTP ${response.status})`);
+  }
   const text = await response.text();
-  if (!response.ok) throw new Error(`Daytona runner execution failed (${response.status}): ${redactEnvStoreOutput(text.slice(0, 1_000), runtimeEnv)}`);
 
   const value: unknown = text ? JSON.parse(text) : {};
   if (!isRecord(value) || typeof value.exitCode !== "number" || typeof value.result !== "string") {

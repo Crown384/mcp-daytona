@@ -55,7 +55,7 @@ Use the production MCP endpoint:
 https://daytona-mcp.pama.company/mcp
 ```
 
-No custom MCP API-key layer is implemented.
+Before Env Store is configured, the original MCP tools are available without a separate caller bearer (the endpoint must still be secured at the network/host layer). **Once any Pama Env Store setting is configured on the Worker, EVERY sandbox operation requires the `PAMA_ENV_STORE_MCP_AUTH_TOKEN` bearer credential**, including list/get/rerun/manage/configure/destroy; a partially configured integration fails closed. This is one shared service identity, not per-user authorization. Do not distribute its bearer token to mutually untrusted users. An external authenticated gateway is still recommended.
 
 After deploying a tool-schema change, refresh/reconnect the ChatGPT MCP connection so clients stop using cached tool metadata.
 
@@ -65,14 +65,14 @@ Daytona MCP can now fetch a project/environment from Pama Env Store **on the Wor
 
 - `PAMA_ENV_STORE_URL` — HTTPS **Next.js Env Store website** origin (e.g. `https://env-store.example.com`); this is **not** the Convex cloud URL.
 - `PAMA_ENV_STORE_TOKEN` — one-time `pes_...` machine token created in Env Store and securely set using Cloudflare Worker secret management.
-- `PAMA_ENV_STORE_MCP_AUTH_TOKEN` — **separate 32+ character bearer secret** required from the MCP caller for any secret-enabled `run_cycle` or `rerun_cycle` call. Configure on the Worker, and configure the MCP client to supply `Authorization: Bearer <caller token>` using its supported authentication mechanism.
+- `PAMA_ENV_STORE_MCP_AUTH_TOKEN` — **separate 32+ character bearer secret** required from the MCP caller for **every sandbox tool call when any Env Store setting is configured on the Worker**. Configure on the Worker, and configure the MCP client to supply `Authorization: Bearer <caller token>` using its supported authentication mechanism.
 - `PAMA_ENV_STORE_ALLOW_PRODUCTION=true` — optional explicit production opt-in. Default is denied.
 
 Create a dedicated Env Store machine client with access only to the required projects and environments. Configure these Worker secrets out-of-band before deployment. If your ChatGPT MCP connection cannot supply the caller bearer securely, secret-enabled tools will fail closed; do not bypass authentication by making the Worker token public. Env Store must be deployed with a working Convex backend first.
 
 Pass both `env_store_project` (its slug) and `env_store_environment` (`staging` or `production`) on `run_cycle` or `rerun_cycle`. No secret values or machine tokens belong in these tool parameters. The Worker requests `GET /api/projects/{slug}/env/{environment}` with its bearer credential over HTTPS, validates the response, refuses reserved runner environment names, then injects approved values through Daytona's **per-execution process environment**. The values are not saved to the checkout or automatically persisted in the sandbox. The machine credential is not forwarded to Daytona, and no secret values are returned by the MCP API. When any Env Store configuration exists on the Worker, **ALL sandbox tools** (including list/get, rerun, configure, manage, and destroy) require the configured caller bearer; partial configuration fails closed. Public non-secret operation is only retained before *any* secret-store integration is configured. Protect the entire endpoint with a separate authenticated gateway too. Treat the caller token as a single shared service identity; do not share it across untrusted users. Normal calls without these optional parameters work as before.
 
-The runner output is redacted for exact secret values (including URL encoding). **This is defense in depth, not a complete data-loss-prevention boundary.** Arbitrary shell commands or malicious repository scripts running with secret access can encode, transmit, or otherwise exfiltrate secrets. Limit the machine token to staging whenever possible, use trustworthy repositories/commands, restrict egress on sensitive sandboxes, and rotate credentials. Production use requires explicit permission and security review.
+Successful runner output is redacted for exact secret values (including URL encoding). Upstream Daytona HTTP **error bodies are discarded entirely** before constructing a caller-visible status-only error, preventing partial-secret leaks at output truncation boundaries. **This is defense in depth, not a complete data-loss-prevention boundary.** Arbitrary shell commands or malicious repository scripts running with secret access can encode, transmit, or otherwise exfiltrate secrets. Limit the machine token to staging whenever possible, use trustworthy repositories/commands, restrict egress on sensitive sandboxes, and rotate credentials. Production use requires explicit permission and security review.
 
 ## Tools
 
