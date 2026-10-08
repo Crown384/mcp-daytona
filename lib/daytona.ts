@@ -303,9 +303,16 @@ async function executeRunner(
     await response.body?.cancel().catch(() => undefined);
     throw new Error(`Daytona runner execution failed (HTTP ${response.status})`);
   }
-  const text = await response.text();
-
-  const value: unknown = text ? JSON.parse(text) : {};
+  // SyntaxError from JSON.parse can include a fragment of the raw response.
+  // Treat the entire successful-response body as untrusted: never let its text,
+  // parse errors or read errors escape into an MCP tool result.
+  let value: unknown;
+  try {
+    const text = await response.text();
+    value = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error("Daytona runner response was invalid");
+  }
   if (!isRecord(value) || typeof value.exitCode !== "number" || typeof value.result !== "string") {
     throw new Error("Daytona runner response was missing exitCode or result");
   }

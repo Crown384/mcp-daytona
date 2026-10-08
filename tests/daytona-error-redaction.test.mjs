@@ -60,3 +60,18 @@ test("success logs are redacted for raw and URL-encoded secrets", async () => {
     assert.equal(result.log, "raw=[REDACTED] url=[REDACTED]");
   } finally { globalThis.fetch = oldFetch; }
 });
+
+test("HTTP 200 malformed toolbox JSON never leaks input through parser errors", async () => {
+  const oldFetch = globalThis.fetch;
+  const malformed = '{"exitCode":0,"result":' + secret + ',"other":"hidden"}';
+  try {
+    globalThis.fetch = async () => new Response(malformed, { status: 200, headers: { "Content-Type": "application/json" } });
+    await assert.rejects(invoke(), (error) => {
+      assert.equal(error.message, "Daytona runner response was invalid");
+      assert.equal(error.message.includes(secret), false);
+      assert.equal(error.message.includes(secret.slice(0, 12)), false);
+      assert.equal(error.message.includes(secret.slice(-12)), false);
+      return true;
+    });
+  } finally { globalThis.fetch = oldFetch; }
+});
