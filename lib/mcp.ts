@@ -12,6 +12,8 @@ import {
   type SandboxSnapshot,
   type SyncMode,
 } from "./daytona";
+import type { EnvStoreSelection } from "./env-store";
+import { authorizeEnvStoreCaller } from "./mcp-auth";
 
 const CURRENT_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOL = "2025-11-25";
@@ -45,6 +47,11 @@ type Tool = Readonly<{
   annotations: JsonRecord;
 }>;
 
+const ENV_STORE_PROPERTIES = {
+  env_store_project: { type: "string", pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$", description: "Optional Pama Env Store project slug. Values are fetched on the MCP backend; never provide secrets as tool arguments." },
+  env_store_environment: { type: "string", enum: ["staging", "production"], description: "Required with env_store_project. Production is disabled unless explicitly enabled by the MCP operator." },
+} as const;
+
 const COMMAND_PROPERTIES = {
   command: {
     type: "string",
@@ -76,6 +83,7 @@ const RUN_CYCLE_TOOL: Tool = {
       },
       branch: { type: "string", default: "main", description: "Existing GitHub branch." },
       ...COMMAND_PROPERTIES,
+      ...ENV_STORE_PROPERTIES,
       timeout_seconds: { type: "integer", minimum: 60, maximum: 3600, default: 1200 },
       after_run: { type: "string", enum: ["delete", "keep", "stop", "pause"], default: "delete" },
       snapshot: { type: "string", enum: [...SNAPSHOTS], default: "daytona-medium" },
@@ -103,6 +111,7 @@ const RERUN_CYCLE_TOOL: Tool = {
     properties: {
       sandbox_id: { type: "string" },
       ...COMMAND_PROPERTIES,
+      ...ENV_STORE_PROPERTIES,
       timeout_seconds: { type: "integer", minimum: 60, maximum: 3600, default: 1200 },
       sync_mode: {
         type: "string",
@@ -267,6 +276,19 @@ function parseSandboxId(args: JsonRecord): string {
   return stringValue(args, "sandbox_id", SANDBOX_PATTERN);
 }
 
+function parseEnvStoreSelection(args: JsonRecord): EnvStoreSelection | undefined {
+  const project = args.env_store_project;
+  const environment = args.env_store_environment;
+  if (project === undefined && environment === undefined) return undefined;
+  if (typeof project !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(project) || project.length > 96) {
+    throw new Error("env_store_project must be a project slug");
+  }
+  if (environment !== "staging" && environment !== "production") {
+    throw new Error("env_store_environment is required and must be staging or production");
+  }
+  return { project, environment };
+}
+
 function parseCommand(args: JsonRecord): string | undefined {
   if (args.command === undefined) return undefined;
   const command = stringValue(args, "command");
@@ -323,6 +345,7 @@ async function executeTool(name: string, args: JsonRecord): Promise<{ text: stri
       branch: parseBranch(args),
       command: parseCommand(args),
       workingPath: parseWorkingPath(args),
+      envStore: parseEnvStoreSelection(args),
       timeoutSeconds: integerValue(args, "timeout_seconds", 1200, 60, 3600),
       afterRun,
       snapshot,
@@ -337,6 +360,7 @@ async function executeTool(name: string, args: JsonRecord): Promise<{ text: stri
       sandboxId: parseSandboxId(args),
       command: parseCommand(args),
       workingPath: parseWorkingPath(args),
+      envStore: parseEnvStoreSelection(args),
       timeoutSeconds: integerValue(args, "timeout_seconds", 1200, 60, 3600),
       syncMode: enumValue<SyncMode>(args, "sync_mode", ["reset", "none"], "reset"),
       afterRun: enumValue<AfterRun>(args, "after_run", ["delete", "keep", "stop", "pause"], "keep"),
@@ -380,13 +404,30 @@ async function executeTool(name: string, args: JsonRecord): Promise<{ text: stri
   throw new Error(`Unknown tool: ${name}`);
 }
 
-async function callTool(id: JsonRpcId, params: unknown, headerToolName: string | null): Promise<Response> {
+async function callTool(id: JsonRpcId, params: unknown, headerToolName: string | null, authorization: string | null): Promise<Response> {
   if (!isRecord(params)) return toolError(id, "tools/call requires object params");
   const name = typeof params.name === "string" ? params.name : headerToolName;
   if (!name) return toolError(id, "Tool name is missing");
 
+  const args = argumentsOf(params);
+  // Once machine secrets are configured, *every* sandbox operation uses a
+  // single authenticated control plane: unauthenticated callers cannot list,
+  // rerun, inspect, stop, or destroy sandboxes that may contain live secrets.
+  // Partial/misconfigured Env Store configuration also fails closed.
+  const secretsConfigured = Boolean(
+    process.env.PAMA_ENV_STORE_URL ||
+    process.env.PAMA_ENV_STORE_TOKEN ||
+    process.env.PAMA_ENV_STORE_MCP_AUTH_TOKEN,
+  );
+  const requestedSecrets = args.env_store_project !== undefined ||
+    args.env_store_environment !== undefined;
+  if ((secretsConfigured || requestedSecrets) &&
+      !await authorizeEnvStoreCaller(authorization)) {
+    return toolError(id, "Authenticated MCP caller required for sandbox operations");
+  }
+
   try {
-    const result = await executeTool(name, argumentsOf(params));
+    const result = await executeTool(name, args);
     return toolResult(id, result.text, result.data, result.failed ?? false);
   } catch (error) {
     return toolError(id, error instanceof Error ? error.message : String(error));
@@ -413,7 +454,7 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
     case "tools/list":
       return rpcResponse(rpc.id, { resultType: "complete", tools: TOOLS, ttlMs: 3_600_000, cacheScope: "public" });
     case "tools/call":
-      return callTool(rpc.id, rpc.params, request.headers.get("Mcp-Name"));
+      return callTool(rpc.id, rpc.params, request.headers.get("Mcp-Name"), request.headers.get("Authorization"));
     default:
       return rpcError(rpc.id, -32601, `Method not found: ${rpc.method}`);
   }
