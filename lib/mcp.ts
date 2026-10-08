@@ -13,6 +13,7 @@ import {
   type SyncMode,
 } from "./daytona";
 import type { EnvStoreSelection } from "./env-store";
+import { authorizeEnvStoreCaller } from "./mcp-auth";
 
 const CURRENT_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOL = "2025-11-25";
@@ -403,13 +404,22 @@ async function executeTool(name: string, args: JsonRecord): Promise<{ text: stri
   throw new Error(`Unknown tool: ${name}`);
 }
 
-async function callTool(id: JsonRpcId, params: unknown, headerToolName: string | null): Promise<Response> {
+async function callTool(id: JsonRpcId, params: unknown, headerToolName: string | null, authorization: string | null): Promise<Response> {
   if (!isRecord(params)) return toolError(id, "tools/call requires object params");
   const name = typeof params.name === "string" ? params.name : headerToolName;
   if (!name) return toolError(id, "Tool name is missing");
 
+  const args = argumentsOf(params);
+  // Existing non-secret QA tools remain backwards compatible. Secret-bearing
+  // calls additionally require a configured caller credential.
+  if ((name === "run_cycle" || name === "rerun_cycle") &&
+      (args.env_store_project !== undefined || args.env_store_environment !== undefined) &&
+      !await authorizeEnvStoreCaller(authorization)) {
+    return toolError(id, "Env Store integration requires an authenticated MCP caller");
+  }
+
   try {
-    const result = await executeTool(name, argumentsOf(params));
+    const result = await executeTool(name, args);
     return toolResult(id, result.text, result.data, result.failed ?? false);
   } catch (error) {
     return toolError(id, error instanceof Error ? error.message : String(error));
@@ -436,7 +446,7 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
     case "tools/list":
       return rpcResponse(rpc.id, { resultType: "complete", tools: TOOLS, ttlMs: 3_600_000, cacheScope: "public" });
     case "tools/call":
-      return callTool(rpc.id, rpc.params, request.headers.get("Mcp-Name"));
+      return callTool(rpc.id, rpc.params, request.headers.get("Mcp-Name"), request.headers.get("Authorization"));
     default:
       return rpcError(rpc.id, -32601, `Method not found: ${rpc.method}`);
   }
