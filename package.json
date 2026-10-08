@@ -8,7 +8,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "node --test tests/runner.test.mjs",
+    "test": "node --test tests/*.test.mjs",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run test",
     "cf:build": "opennextjs-cloudflare build",
     "validate": "node scripts/validate-and-push.mjs",

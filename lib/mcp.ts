@@ -410,12 +410,20 @@ async function callTool(id: JsonRpcId, params: unknown, headerToolName: string |
   if (!name) return toolError(id, "Tool name is missing");
 
   const args = argumentsOf(params);
-  // Existing non-secret QA tools remain backwards compatible. Secret-bearing
-  // calls additionally require a configured caller credential.
-  if ((name === "run_cycle" || name === "rerun_cycle") &&
-      (args.env_store_project !== undefined || args.env_store_environment !== undefined) &&
+  // Once machine secrets are configured, *every* sandbox operation uses a
+  // single authenticated control plane: unauthenticated callers cannot list,
+  // rerun, inspect, stop, or destroy sandboxes that may contain live secrets.
+  // Partial/misconfigured Env Store configuration also fails closed.
+  const secretsConfigured = Boolean(
+    process.env.PAMA_ENV_STORE_URL ||
+    process.env.PAMA_ENV_STORE_TOKEN ||
+    process.env.PAMA_ENV_STORE_MCP_AUTH_TOKEN,
+  );
+  const requestedSecrets = args.env_store_project !== undefined ||
+    args.env_store_environment !== undefined;
+  if ((secretsConfigured || requestedSecrets) &&
       !await authorizeEnvStoreCaller(authorization)) {
-    return toolError(id, "Env Store integration requires an authenticated MCP caller");
+    return toolError(id, "Authenticated MCP caller required for sandbox operations");
   }
 
   try {
