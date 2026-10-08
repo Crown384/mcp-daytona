@@ -52,7 +52,7 @@ pnpm run deploy
 Use the production MCP endpoint:
 
 ```text
-https://daytona-mcp.pama.page/mcp
+https://daytona-mcp.pama.company/mcp
 ```
 
 No custom MCP API-key layer is implemented.

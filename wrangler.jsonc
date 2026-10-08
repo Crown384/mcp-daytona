@@ -7,7 +7,7 @@
   "keep_vars": true,
   "routes": [
     {
-      "pattern": "daytona-mcp.pama.page",
+      "pattern": "daytona-mcp.pama.company",
       "custom_domain": true
     }
   ],
