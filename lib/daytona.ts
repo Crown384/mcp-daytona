@@ -436,8 +436,7 @@ export async function rerunCycle(input: RerunCycleInput, principal?: SandboxPrin
   // On rerun trust the repository derived from managed sandbox labels,
   // never an arbitrary caller-provided project/repository string.
   if (input.envStore) assertTrustedSecretExecution(context.repository, input.afterRun);
-  // Any error after ownership and policy checks must still honor after_run.
-  // This includes secret lookup, GitHub auth, sandbox start and runner failures.
+  // Honor after_run on every failure after ownership and policy checks.
   try {
     const runtimeEnv = input.envStore ? await loadEnvStoreValues(input.envStore) : {};
     const credentials = await getRepositoryCredentials(context.repository);
@@ -469,7 +468,6 @@ export async function rerunCycle(input: RerunCycleInput, principal?: SandboxPrin
     throw new Error(`${errorMessage(error)}${suffix}`);
   }
 }
-
 export async function listManagedSandboxes(principal?: SandboxPrincipal): Promise<unknown> {
   return filterManagedList(await requestJson("/sandbox"), principal);
 }
