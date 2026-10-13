@@ -120,17 +120,3 @@ export async function authenticateMcpCaller(header: string | null, required: boo
   return await authorizeEnvStoreCaller(header) ? { authorized: true } : { authorized: false };
 }
 
-export function assertPrincipalScope(
-  principal: ClientPrincipal | undefined,
-  repository: string,
-  selection?: { project: string; environment: "staging" | "production" },
-): void {
-  if (!principal) return; // Legacy single-operator mode; migrated clients are scoped.
-  if (!principal.repositories.includes(repository.toLowerCase())) {
-    throw new Error("MCP principal is not authorized for repository");
-  }
-  if (selection && (!principal.projects.includes(selection.project) ||
-      !principal.environments.includes(selection.environment))) {
-    throw new Error("MCP principal is not authorized for project/environment");
-  }
-}
