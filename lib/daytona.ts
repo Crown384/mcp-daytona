@@ -7,6 +7,23 @@ const DAYTONA_TOOLBOX_URL = "https://proxy.app.daytona.io/toolbox";
 const MAX_LOG_CHARS = 40_000;
 const MANAGED_BY_KEY = "managed-by";
 const MANAGED_BY_VALUE = "mcp-daytona";
+const CLIENT_OWNER_LABEL = "mcp-client-id";
+
+/** Authenticated owner identity is supplied by the trusted MCP handler. */
+type SandboxPrincipal = Readonly<{
+  id: string;
+  repositories: readonly string[];
+  projects: readonly string[];
+  environments: readonly ("staging" | "production")[];
+}>;
+
+function checkPrincipalScope(principal: SandboxPrincipal | undefined, repository: string, selection?: EnvStoreSelection): void {
+  if (!principal) return;
+  if (!principal.repositories.includes(repository.toLowerCase())) throw new Error("MCP principal cannot access repository");
+  if (selection && (!principal.projects.includes(selection.project) ||
+      !principal.environments.includes(selection.environment))) throw new Error("MCP principal cannot access project/environment");
+}
+
 const API_RETRY_ATTEMPTS = 10;
 const RETRY_BASE_DELAY_MS = 750;
 
@@ -156,6 +173,15 @@ function isManagedSandbox(value: unknown): boolean {
   return labelsOf(value)?.[MANAGED_BY_KEY] === MANAGED_BY_VALUE;
 }
 
+function isOwnedSandbox(value: unknown, principal?: SandboxPrincipal): boolean {
+  if (!isManagedSandbox(value)) return false;
+  if (!principal) return true;
+  const labels = labelsOf(value);
+  return labels?.[CLIENT_OWNER_LABEL] === principal.id &&
+    typeof labels.repository === "string" &&
+    principal.repositories.includes(labels.repository.toLowerCase());
+}
+
 function managedContext(value: unknown): { repository: string; branch: string } {
   const labels = labelsOf(value);
   const repository = labels?.repository;
@@ -166,17 +192,18 @@ function managedContext(value: unknown): { repository: string; branch: string } 
   return { repository, branch };
 }
 
-async function getManagedSandboxRaw(sandboxId: string): Promise<unknown> {
+async function getManagedSandboxRaw(sandboxId: string, principal?: SandboxPrincipal): Promise<unknown> {
   const sandbox = await requestJson(`/sandbox/${encodeURIComponent(sandboxId)}`);
-  if (!isManagedSandbox(sandbox)) throw new Error("Sandbox is not managed by mcp-daytona");
+  if (!isOwnedSandbox(sandbox, principal)) throw new Error("Sandbox is not accessible to MCP caller");
   return sandbox;
 }
 
-async function labelSandbox(sandboxId: string, repository: string, branch: string): Promise<void> {
+async function labelSandbox(sandboxId: string, repository: string, branch: string, principal?: SandboxPrincipal): Promise<void> {
   await request(`/sandbox/${encodeURIComponent(sandboxId)}/labels`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ labels: { [MANAGED_BY_KEY]: MANAGED_BY_VALUE, repository, branch } }),
+    body: JSON.stringify({ labels: { [MANAGED_BY_KEY]: MANAGED_BY_VALUE, repository, branch,
+      ...(principal ? { [CLIENT_OWNER_LABEL]: principal.id } : {}) } }),
   });
 }
 
@@ -243,14 +270,14 @@ async function createSandboxRequest(input: RunCycleInput, name: string): Promise
   throw new Error(`Daytona sandbox creation failed after ${API_RETRY_ATTEMPTS} attempts: ${errorMessage(lastError)}`);
 }
 
-async function createSandbox(input: RunCycleInput): Promise<string> {
+async function createSandbox(input: RunCycleInput, principal?: SandboxPrincipal): Promise<string> {
   const value = await createSandboxRequest(input, newSandboxName());
   if (!isRecord(value) || typeof value.id !== "string" || !value.id) {
     throw new Error("Daytona sandbox creation response did not include an id");
   }
 
   try {
-    await labelSandbox(value.id, input.repository, input.branch);
+    await labelSandbox(value.id, input.repository, input.branch, principal);
   } catch (error) {
     await request(`/sandbox/${encodeURIComponent(value.id)}`, { method: "DELETE" }).catch(() => undefined);
     throw error;
@@ -346,19 +373,20 @@ async function applyAfterRun(sandboxId: string, afterRun: AfterRun): Promise<Pic
   }
 }
 
-function filterManagedList(value: unknown): unknown {
-  if (Array.isArray(value)) return value.filter(isManagedSandbox);
+function filterManagedList(value: unknown, principal?: SandboxPrincipal): unknown {
+  if (Array.isArray(value)) return value.filter((item) => isOwnedSandbox(item, principal));
   if (!isRecord(value)) return [];
 
   for (const key of ["items", "sandboxes", "data"] as const) {
     const items = value[key];
-    if (Array.isArray(items)) return { ...value, [key]: items.filter(isManagedSandbox) };
+    if (Array.isArray(items)) return { ...value, [key]: items.filter((item) => isOwnedSandbox(item, principal)) };
   }
   return [];
 }
 
-export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
+export async function runCycle(input: RunCycleInput, principal?: SandboxPrincipal): Promise<CycleResult> {
   const repository = normalizeRepository(input.repository);
+  checkPrincipalScope(principal, repository, input.envStore);
   // Reject untrusted repositories and persistent secret executions before any
   // credential fetch or sandbox provisioning. Do not apply to nonsecret runs.
   if (input.envStore) assertTrustedSecretExecution(repository, input.afterRun);
@@ -366,7 +394,7 @@ export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
   const runtimeEnv = input.envStore ? await loadEnvStoreValues(input.envStore) : {};
   const credentials = await getRepositoryCredentials(repository);
   const normalizedInput: RunCycleInput = { ...input, repository };
-  const sandboxId = await createSandbox(normalizedInput);
+  const sandboxId = await createSandbox(normalizedInput, principal);
   let execution: { exitCode: number; log: string };
 
   try {
@@ -399,9 +427,10 @@ export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
   };
 }
 
-export async function rerunCycle(input: RerunCycleInput): Promise<CycleResult> {
-  const sandbox = await getManagedSandboxRaw(input.sandboxId);
+export async function rerunCycle(input: RerunCycleInput, principal?: SandboxPrincipal): Promise<CycleResult> {
+  const sandbox = await getManagedSandboxRaw(input.sandboxId, principal);
   const context = managedContext(sandbox);
+  checkPrincipalScope(principal, context.repository, input.envStore);
   // On rerun trust the repository derived from managed sandbox labels,
   // never an arbitrary caller-provided project/repository string.
   if (input.envStore) assertTrustedSecretExecution(context.repository, input.afterRun);
@@ -431,21 +460,21 @@ export async function rerunCycle(input: RerunCycleInput): Promise<CycleResult> {
   };
 }
 
-export async function listManagedSandboxes(): Promise<unknown> {
-  return filterManagedList(await requestJson("/sandbox"));
+export async function listManagedSandboxes(principal?: SandboxPrincipal): Promise<unknown> {
+  return filterManagedList(await requestJson("/sandbox"), principal);
 }
 
-export async function getManagedSandbox(sandboxId: string): Promise<unknown> {
-  return getManagedSandboxRaw(sandboxId);
+export async function getManagedSandbox(sandboxId: string, principal?: SandboxPrincipal): Promise<unknown> {
+  return getManagedSandboxRaw(sandboxId, principal);
 }
 
-export async function manageSandbox(sandboxId: string, action: SandboxAction): Promise<void> {
-  await getManagedSandboxRaw(sandboxId);
+export async function manageSandbox(sandboxId: string, action: SandboxAction, principal?: SandboxPrincipal): Promise<void> {
+  await getManagedSandboxRaw(sandboxId, principal);
   await request(`/sandbox/${encodeURIComponent(sandboxId)}/${action}`, { method: "POST" });
 }
 
-export async function configureSandbox(sandboxId: string, setting: LifecycleSetting, minutes: number): Promise<void> {
-  await getManagedSandboxRaw(sandboxId);
+export async function configureSandbox(sandboxId: string, setting: LifecycleSetting, minutes: number, principal?: SandboxPrincipal): Promise<void> {
+  await getManagedSandboxRaw(sandboxId, principal);
   const pathBySetting: Record<LifecycleSetting, string> = {
     auto_stop: "autostop",
     auto_pause: "autopause",
@@ -454,7 +483,7 @@ export async function configureSandbox(sandboxId: string, setting: LifecycleSett
   await request(`/sandbox/${encodeURIComponent(sandboxId)}/${pathBySetting[setting]}/${minutes}`, { method: "POST" });
 }
 
-export async function destroySandbox(sandboxId: string): Promise<void> {
-  await getManagedSandboxRaw(sandboxId);
+export async function destroySandbox(sandboxId: string, principal?: SandboxPrincipal): Promise<void> {
+  await getManagedSandboxRaw(sandboxId, principal);
   await request(`/sandbox/${encodeURIComponent(sandboxId)}`, { method: "DELETE" });
 }

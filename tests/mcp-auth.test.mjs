@@ -30,7 +30,7 @@ test("unauthenticated secret-enabled MCP calls fail closed", async () => {
 });
 test("MCP call handler gates secret-enhanced operations on bearer", () => {
   const source = readFileSync(resolve("lib/mcp.ts"), "utf8");
-  assert.match(source, /authorizeEnvStoreCaller\(authorization\)/);
+  assert.match(source, /authenticateMcpCaller\(authorization,/);
   assert.match(source, /args\.env_store_project !== undefined/);
   assert.match(source, /request\.headers\.get\("Authorization"\)/);
 });

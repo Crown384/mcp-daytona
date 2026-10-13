@@ -93,7 +93,7 @@ test("Daytona resolves GitHub credentials before creating a fresh sandbox", () =
   const rerunStart = daytonaSource.indexOf("export async function rerunCycle");
   const runCycleSource = daytonaSource.slice(runCycleStart, rerunStart);
   assert.ok(runCycleStart >= 0 && rerunStart > runCycleStart);
-  assert.ok(runCycleSource.indexOf("getRepositoryCredentials(repository)") < runCycleSource.indexOf("createSandbox(normalizedInput)"));
+  assert.ok(runCycleSource.indexOf("getRepositoryCredentials(repository)") < runCycleSource.indexOf("createSandbox(normalizedInput, principal)"));
 });
 
 test("arbitrary command execution is single-shot and never automatically retried", () => {

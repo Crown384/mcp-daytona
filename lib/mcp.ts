@@ -13,7 +13,7 @@ import {
   type SyncMode,
 } from "./daytona";
 import type { EnvStoreSelection } from "./env-store";
-import { authorizeEnvStoreCaller } from "./mcp-auth";
+import { authenticateMcpCaller, type ClientPrincipal } from "./mcp-auth";
 
 const CURRENT_PROTOCOL = "2026-07-28";
 const LEGACY_PROTOCOL = "2025-11-25";
@@ -333,7 +333,7 @@ function discoveryResult(): JsonRecord {
   };
 }
 
-async function executeTool(name: string, args: JsonRecord): Promise<{ text: string; data: unknown; failed?: boolean }> {
+async function executeTool(name: string, args: JsonRecord, principal?: ClientPrincipal): Promise<{ text: string; data: unknown; failed?: boolean }> {
   if (name === "run_cycle") {
     const afterRun = enumValue<AfterRun>(args, "after_run", ["delete", "keep", "stop", "pause"], "delete");
     const snapshot = enumValue<SandboxSnapshot>(args, "snapshot", SNAPSHOTS, "daytona-medium");
@@ -350,7 +350,7 @@ async function executeTool(name: string, args: JsonRecord): Promise<{ text: stri
       afterRun,
       snapshot,
       autoStopMinutes: integerValue(args, "auto_stop_minutes", 75, 0, 10080),
-    });
+    }, principal);
     const failed = data.exitCode !== 0 || data.lifecycleStatus === "failed";
     return { text: `Daytona cycle ${failed ? "failed" : "completed"} for ${data.repository}@${data.branch}. Sandbox: ${data.sandboxId}.`, data, failed };
   }
@@ -364,25 +364,25 @@ async function executeTool(name: string, args: JsonRecord): Promise<{ text: stri
       timeoutSeconds: integerValue(args, "timeout_seconds", 1200, 60, 3600),
       syncMode: enumValue<SyncMode>(args, "sync_mode", ["reset", "none"], "reset"),
       afterRun: enumValue<AfterRun>(args, "after_run", ["delete", "keep", "stop", "pause"], "keep"),
-    });
+    }, principal);
     const failed = data.exitCode !== 0 || data.lifecycleStatus === "failed";
     return { text: `Daytona rerun ${failed ? "failed" : "completed"} for ${data.repository}@${data.branch}.`, data, failed };
   }
 
   if (name === "list_sandboxes") {
-    const data = await listManagedSandboxes();
+    const data = await listManagedSandboxes(principal);
     return { text: "Managed Daytona sandboxes listed.", data: { sandboxes: data } };
   }
 
   if (name === "get_sandbox") {
     const sandboxId = parseSandboxId(args);
-    return { text: `Managed sandbox ${sandboxId} loaded.`, data: { sandbox: await getManagedSandbox(sandboxId) } };
+    return { text: `Managed sandbox ${sandboxId} loaded.`, data: { sandbox: await getManagedSandbox(sandboxId, principal) } };
   }
 
   if (name === "manage_sandbox") {
     const sandboxId = parseSandboxId(args);
     const action = enumValue<SandboxAction>(args, "action", ["start", "stop", "pause", "recover"]);
-    await manageSandbox(sandboxId, action);
+    await manageSandbox(sandboxId, action, principal);
     return { text: `Sandbox ${sandboxId}: ${action} accepted.`, data: { sandboxId, action } };
   }
 
@@ -391,13 +391,13 @@ async function executeTool(name: string, args: JsonRecord): Promise<{ text: stri
     const setting = enumValue<LifecycleSetting>(args, "setting", ["auto_stop", "auto_pause", "auto_delete"]);
     const minutes = integerValue(args, "minutes", 0, -1, 10080);
     if (setting !== "auto_delete" && minutes < 0) throw new Error(`${setting} cannot be negative`);
-    await configureSandbox(sandboxId, setting, minutes);
+    await configureSandbox(sandboxId, setting, minutes, principal);
     return { text: `Sandbox ${sandboxId}: ${setting} set to ${minutes}.`, data: { sandboxId, setting, minutes } };
   }
 
   if (name === "destroy_sandbox") {
     const sandboxId = parseSandboxId(args);
-    await destroySandbox(sandboxId);
+    await destroySandbox(sandboxId, principal);
     return { text: `Sandbox ${sandboxId} deletion accepted.`, data: { sandboxId, deleted: true } };
   }
 
@@ -421,15 +421,18 @@ async function callTool(id: JsonRpcId, params: unknown, headerToolName: string |
   );
   const requestedSecrets = args.env_store_project !== undefined ||
     args.env_store_environment !== undefined;
-  if ((secretsConfigured || requestedSecrets) &&
-      !await authorizeEnvStoreCaller(authorization)) {
+  const auth = await authenticateMcpCaller(authorization, secretsConfigured || requestedSecrets);
+  if (!auth.authorized) {
     return toolError(id, "Authenticated MCP caller required for sandbox operations");
   }
 
   try {
-    const result = await executeTool(name, args);
+    const result = await executeTool(name, args, auth.principal);
+    if (auth.principal) console.info("mcp.control", { principal: auth.principal.id, action: name, result: result.failed ? "failed" : "ok" });
     return toolResult(id, result.text, result.data, result.failed ?? false);
   } catch (error) {
+    if (auth.principal) console.info("mcp.control", { principal: auth.principal.id, action: name, result: "denied_or_failed" });
+    // Do not report bearer contents, upstream secret values, or full error causes.
     return toolError(id, error instanceof Error ? error.message : String(error));
   }
 }
