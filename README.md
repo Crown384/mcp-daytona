@@ -59,6 +59,22 @@ Before Env Store is configured, the original MCP tools are available without a s
 
 After deploying a tool-schema change, refresh/reconnect the ChatGPT MCP connection so clients stop using cached tool metadata.
 
+## Scoped MCP client identities (LDT-68)
+
+The optional `PAMA_ENV_STORE_MCP_CLIENTS_JSON` Worker **secret** enables per-client service principals. Use an array of records with `id` (stable unique lowercase slug), `tokenSha256` (SHA-256 hex of a **random 32+ character bearer**), `enabled` (boolean), `repositories` (exact lowercase `owner/repo` entries), `projects` (allowed Env Store project slugs), and `environments` (subset of `["staging","production"]`). Never store raw client tokens in the JSON. A client without project/environment scope may still work on its allowed repositories without secrets. The global production and `PAMA_ENV_STORE_TRUSTED_REPOS` controls remain in effect.
+
+When this variable is **present**, even empty or malformed, the server fails closed: **all sandbox tool calls require a matching enabled principal token**, and the old shared bearer is rejected. Every newly created sandbox is labeled with the caller's principal ID, and list/get/rerun/manage/configure/destroy check matching ownership and allowed repository. Existing unlabeled sandboxes are intentionally inaccessible through the new scoped control plane. `initialize` and `tools/list` continue advertising public schemas only; no sandbox data is exposed by those methods. Control actions emit sanitized principal ID, tool name and outcome to the Worker log, without secret values.
+
+**Safe migration:** enumerate and delete old unowned sandboxes before switching modes, or complete their work using the old trusted single-user endpoint; do not share the legacy bearer across different users. Create uniquely identifiable hashed principals, supply each caller's raw bearer only through its secure MCP connection configuration, and then configure the Worker secret. If migration must be reversible, restore the prior Worker secret configuration only after verifying no secret-bearing sandboxes are accessible to another identity. To rotate, provision a second record with a new ID/token hash, migrate the client connection, then disable/remove the old record. To revoke, set `enabled:false` or remove the record and update the Worker secret; callers are denied after the deployment picks up that new configuration. Do not reuse IDs across different owners.
+
+For a locally generated bearer available as `MCP_CLIENT_BEARER` in the **trusted operator shell**, compute its digest without printing the bearer:
+
+```sh
+node -e 'const c=require("node:crypto");if(!process.env.MCP_CLIENT_BEARER)process.exit(1);console.log(c.createHash("sha256").update(process.env.MCP_CLIENT_BEARER).digest("hex"))'
+```
+
+This is scoped **service-principal bearer authorization**, not a complete OAuth authorization-server implementation. For public/multi-tenant distribution, implement the MCP HTTP OAuth 2.1 protected-resource metadata/token validation flow and durable principal identities. The Daytona organization-level API key still has broad authority outside this MCP; real sandbox egress/isolation and deletion-failure checks remain necessary before using production deploy keys.
+
 ## Secure Env Store integration (optional)
 
 Daytona MCP can now fetch a project/environment from Pama Env Store **on the Worker**, without placing the secret in the MCP request or a generated shell command. The machine token is only configured as a Cloudflare Worker secret, never as an MCP tool argument:
