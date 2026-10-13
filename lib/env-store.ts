@@ -5,6 +5,23 @@
  */
 export type EnvStoreSelection = Readonly<{ project: string; environment: "staging" | "production" }>;
 
+/** Restrict secret-bearing runs; ordinary Daytona/GitHub operations stay unrestricted. */
+export function assertTrustedSecretExecution(repository: string, afterRun: string): void {
+  if (afterRun !== "delete") {
+    throw new Error("Env Store execution requires after_run=delete to prevent persistent secret-bearing sandboxes");
+  }
+  const policy = process.env.PAMA_ENV_STORE_TRUSTED_REPOS?.trim();
+  if (!policy) throw new Error("Env Store trusted repositories are not configured");
+  const entries = policy.split(",").map((entry) => entry.trim().toLowerCase());
+  const namePattern = /^[a-z0-9_.-]+\/[a-z0-9_.-]+$/;
+  if (entries.length > 64 || entries.some((entry) => !namePattern.test(entry))) {
+    throw new Error("Env Store trusted repository policy is invalid");
+  }
+  if (!entries.includes(repository.toLowerCase())) {
+    throw new Error("Repository is not trusted for Env Store secret execution");
+  }
+}
+
 const PROJECT_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VARIABLE_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const MAX_VARIABLES = 128;
