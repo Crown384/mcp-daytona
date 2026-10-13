@@ -368,8 +368,10 @@ async function applyAfterRun(sandboxId: string, afterRun: AfterRun): Promise<Pic
       await request(`/sandbox/${encodeURIComponent(sandboxId)}/${afterRun}`, { method: "POST" });
     }
     return { lifecycleStatus: "completed" };
-  } catch (error) {
-    return { lifecycleStatus: "failed", lifecycleError: errorMessage(error) };
+  } catch {
+    // Lifecycle API responses may contain fragments of previous runner output.
+    // Never surface the upstream error text to an MCP caller.
+    return { lifecycleStatus: "failed", lifecycleError: "Daytona lifecycle request failed; verify sandbox cleanup" };
   }
 }
 
@@ -434,32 +436,38 @@ export async function rerunCycle(input: RerunCycleInput, principal?: SandboxPrin
   // On rerun trust the repository derived from managed sandbox labels,
   // never an arbitrary caller-provided project/repository string.
   if (input.envStore) assertTrustedSecretExecution(context.repository, input.afterRun);
-  const runtimeEnv = input.envStore ? await loadEnvStoreValues(input.envStore) : {};
-  const credentials = await getRepositoryCredentials(context.repository);
-  await ensureStarted(input.sandboxId, sandbox);
-  const execution = await executeRunner(
-    input.sandboxId,
-    "rerun",
-    input.timeoutSeconds,
-    credentials,
-    undefined,
-    input.syncMode,
-    input.command,
-    input.workingPath,
-    runtimeEnv,
-  );
-  const lifecycle = await applyAfterRun(input.sandboxId, input.afterRun);
-  return {
-    ...context,
-    repository: credentials.repository,
-    sandboxId: input.sandboxId,
-    exitCode: execution.exitCode,
-    log: execution.log,
-    afterRun: input.afterRun,
-    ...lifecycle,
-  };
+  // Honor after_run on every failure after ownership and policy checks.
+  try {
+    const runtimeEnv = input.envStore ? await loadEnvStoreValues(input.envStore) : {};
+    const credentials = await getRepositoryCredentials(context.repository);
+    await ensureStarted(input.sandboxId, sandbox);
+    const execution = await executeRunner(
+      input.sandboxId,
+      "rerun",
+      input.timeoutSeconds,
+      credentials,
+      undefined,
+      input.syncMode,
+      input.command,
+      input.workingPath,
+      runtimeEnv,
+    );
+    const lifecycle = await applyAfterRun(input.sandboxId, input.afterRun);
+    return {
+      ...context,
+      repository: credentials.repository,
+      sandboxId: input.sandboxId,
+      exitCode: execution.exitCode,
+      log: execution.log,
+      afterRun: input.afterRun,
+      ...lifecycle,
+    };
+  } catch (error) {
+    const lifecycle = await applyAfterRun(input.sandboxId, input.afterRun);
+    const suffix = lifecycle.lifecycleError ? ` Lifecycle action also failed: ${lifecycle.lifecycleError}` : "";
+    throw new Error(`${errorMessage(error)}${suffix}`);
+  }
 }
-
 export async function listManagedSandboxes(principal?: SandboxPrincipal): Promise<unknown> {
   return filterManagedList(await requestJson("/sandbox"), principal);
 }
