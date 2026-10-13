@@ -58,7 +58,7 @@ function respond(on){
       }});
     }
     if(u.host==="daytona.test"&&method==="DELETE"){
-      if(on.deleteFails)return new Response("private:"+secret,{status:503});
+      if(on.deleteFails)return new Response("private:"+secret,{status:403});
       return new Response(null,{status:204});
     }
     if(u.host==="proxy.app.daytona.io"){
