@@ -67,6 +67,7 @@ Daytona MCP can now fetch a project/environment from Pama Env Store **on the Wor
 - `PAMA_ENV_STORE_TOKEN` — one-time `pes_...` machine token created in Env Store and securely set using Cloudflare Worker secret management.
 - `PAMA_ENV_STORE_MCP_AUTH_TOKEN` — **separate 32+ character bearer secret** required from the MCP caller for **every sandbox tool call when any Env Store setting is configured on the Worker**. Configure on the Worker, and configure the MCP client to supply `Authorization: Bearer <caller token>` using its supported authentication mechanism.
 - `PAMA_ENV_STORE_ALLOW_PRODUCTION=true` — optional explicit production opt-in. Default is denied.
+- `PAMA_ENV_STORE_TRUSTED_REPOS` — **required for secret-bearing runs only**. Comma-separated exact `owner/repo` identities, e.g. `Crown384/track, PAMA-Ltd/pamastore`. No wildcards or prefix matches; the service refuses secret access if unset or malformed. Nonsecret GitHub operations remain unrestricted.
 
 Create a dedicated Env Store machine client with access only to the required projects and environments. Configure these Worker secrets out-of-band before deployment. If your ChatGPT MCP connection cannot supply the caller bearer securely, secret-enabled tools will fail closed; do not bypass authentication by making the Worker token public. Env Store must be deployed with a working Convex backend first.
 
