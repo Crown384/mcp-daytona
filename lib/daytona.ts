@@ -1,7 +1,7 @@
 import { getConfig } from "./config";
 import { getRepositoryCredentials, normalizeRepository, type RepositoryCredentials } from "./github-app";
 import { RUNNER_SCRIPT } from "./runner";
-import { loadEnvStoreValues, redactEnvStoreOutput, type EnvStoreSelection } from "./env-store";
+import { assertTrustedSecretExecution, loadEnvStoreValues, redactEnvStoreOutput, type EnvStoreSelection } from "./env-store";
 
 const DAYTONA_TOOLBOX_URL = "https://proxy.app.daytona.io/toolbox";
 const MAX_LOG_CHARS = 40_000;
@@ -359,6 +359,9 @@ function filterManagedList(value: unknown): unknown {
 
 export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
   const repository = normalizeRepository(input.repository);
+  // Reject untrusted repositories and persistent secret executions before any
+  // credential fetch or sandbox provisioning. Do not apply to nonsecret runs.
+  if (input.envStore) assertTrustedSecretExecution(repository, input.afterRun);
   // Fetch before provisioning: denied scopes never create a sandbox.
   const runtimeEnv = input.envStore ? await loadEnvStoreValues(input.envStore) : {};
   const credentials = await getRepositoryCredentials(repository);
@@ -399,6 +402,9 @@ export async function runCycle(input: RunCycleInput): Promise<CycleResult> {
 export async function rerunCycle(input: RerunCycleInput): Promise<CycleResult> {
   const sandbox = await getManagedSandboxRaw(input.sandboxId);
   const context = managedContext(sandbox);
+  // On rerun trust the repository derived from managed sandbox labels,
+  // never an arbitrary caller-provided project/repository string.
+  if (input.envStore) assertTrustedSecretExecution(context.repository, input.afterRun);
   const runtimeEnv = input.envStore ? await loadEnvStoreValues(input.envStore) : {};
   const credentials = await getRepositoryCredentials(context.repository);
   await ensureStarted(input.sandboxId, sandbox);
